@@ -1,0 +1,5 @@
+{
+  "name": "Chrome Text Statistics Extension",
+  "description": "一个 Manifest V3 Chrome 扩展程序，添加右键菜单以统计选中文字的字数和字符数，并通过现代化的弹窗显示结果。",
+  "requestFramePermissions": []
+}
