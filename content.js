@@ -17,6 +17,50 @@ if (!window.hasWordCountListener) {
       sendResponse(result);
     }
   });
+
+  // 页面加载完成后，检查是否开启了自动采集
+  checkAndAutoCollect();
+}
+
+function checkAndAutoCollect() {
+  chrome.storage.local.get({ autoCollect: false }, (result) => {
+    if (result.autoCollect) {
+      // 给页面一点时间加载动态内容
+      setTimeout(() => {
+        const analysis = analyzePageWords();
+        if (analysis.list.length > 0) {
+          saveToVocabularySilent(analysis.list);
+        }
+      }, 2000);
+    }
+  });
+}
+
+/**
+ * 静默保存单词到 storage (用于自动采集)
+ */
+function saveToVocabularySilent(wordList) {
+  chrome.storage.local.get({ vocabulary: {} }, (result) => {
+    const vocab = result.vocabulary;
+    
+    wordList.forEach(item => {
+      if (vocab[item.word]) {
+        vocab[item.word].count += item.count;
+        vocab[item.word].updatedAt = Date.now();
+      } else {
+        vocab[item.word] = {
+          word: item.word,
+          count: item.count,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+      }
+    });
+
+    chrome.storage.local.set({ vocabulary: vocab }, () => {
+      // console.log(`[生词本] 自动采集了 ${wordList.length} 个单词`);
+    });
+  });
 }
 
 /**
@@ -25,8 +69,8 @@ if (!window.hasWordCountListener) {
 function analyzePageWords() {
   const text = document.body.innerText;
   
-  // 匹配英语单词 (允许包含连字符和撇号，如 co-operate, don't)
-  const words = text.match(/[a-zA-Z]+(['-][a-zA-Z]+)*/g) || [];
+  // 匹配英语单词 (必须以字母开头，允许中间有连字符或撇号)
+  const words = text.match(/\b[a-zA-Z]+(['-][a-zA-Z]+)*\b/g) || [];
 
   // 常用停用词列表 (Stop Words)，过滤掉对学习生词无意义的高频词
   const stopWords = new Set([
@@ -49,7 +93,7 @@ function analyzePageWords() {
   words.forEach(word => {
     const lower = word.toLowerCase();
     
-    // 过滤掉长度小于2的词（除非是 'a' 或 'i'，但 'a' 已在停用词中，故一律过滤短词）
+    // 过滤掉长度小于2的词
     if (lower.length < 2) return;
     
     // 过滤停用词

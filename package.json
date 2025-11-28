@@ -1,5 +1,5 @@
 {
-  "name": "chrome-text-statistics-extension",
+  "name": "词汇助手",
   "private": true,
   "version": "0.0.0",
   "type": "module",

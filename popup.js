@@ -9,8 +9,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyBtn = document.getElementById('copy-btn');
   const saveBtn = document.getElementById('save-btn');
   const goStudyLink = document.getElementById('go-study-link');
+  const autoCollectToggle = document.getElementById('auto-collect-toggle');
   
   let currentWordList = [];
+
+  // 1. 初始化自动采集开关状态
+  chrome.storage.local.get({ autoCollect: false }, (result) => {
+    autoCollectToggle.checked = result.autoCollect;
+  });
+
+  // 监听开关变化
+  autoCollectToggle.addEventListener('change', (e) => {
+    chrome.storage.local.set({ autoCollect: e.target.checked });
+  });
 
   // 导航到学习页
   goStudyLink.addEventListener('click', () => {
@@ -99,13 +110,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // 保存功能
   saveBtn.addEventListener('click', () => {
     if (currentWordList.length === 0) return;
+    saveWordsToStorage(currentWordList, (newCount) => {
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = `已保存 ${newCount} 个新词`;
+      saveBtn.style.background = "#059669"; // Green
+      
+      setTimeout(() => {
+        saveBtn.textContent = originalText;
+        saveBtn.style.background = "";
+      }, 2000);
+    });
+  });
 
-    // 从 storage 获取现有的生词本
+  // 提取公共保存逻辑
+  function saveWordsToStorage(wordList, callback) {
     chrome.storage.local.get({ vocabulary: {} }, (result) => {
       const vocab = result.vocabulary;
       let newCount = 0;
 
-      currentWordList.forEach(item => {
+      wordList.forEach(item => {
         if (vocab[item.word]) {
           // 如果词已存在，增加出现次数，更新时间
           vocab[item.word].count += item.count;
@@ -122,17 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // 保存回 storage
       chrome.storage.local.set({ vocabulary: vocab }, () => {
-        const originalText = saveBtn.textContent;
-        saveBtn.textContent = `已保存 ${newCount} 个新词`;
-        saveBtn.style.background = "#059669"; // Green
-        
-        setTimeout(() => {
-          saveBtn.textContent = originalText;
-          saveBtn.style.background = "";
-        }, 2000);
+        if (callback) callback(newCount);
       });
     });
-  });
+  }
 });

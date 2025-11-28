@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearBtn = document.getElementById('clear-all');
   const refreshBtn = document.getElementById('refresh-list');
   const tabs = document.querySelectorAll('.tab');
+  const sortSelect = document.getElementById('sort-select');
+  const sortWrapper = document.getElementById('sort-wrapper');
   
   // Flashcard elements
   const flashcardView = document.getElementById('flashcard-view');
@@ -33,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  sortSelect.addEventListener('change', () => {
+    renderList();
+  });
+
   // Tab 切换
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -43,9 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (target === 'list-view') {
         listView.style.display = 'block';
         flashcardView.style.display = 'none';
+        sortWrapper.style.display = 'flex';
       } else {
         listView.style.display = 'none';
         flashcardView.style.display = 'flex';
+        sortWrapper.style.display = 'none'; // 卡片模式下隐藏排序
         startFlashcards();
       }
     });
@@ -55,9 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadVocabulary() {
     chrome.storage.local.get({ vocabulary: {} }, (result) => {
       const vocabObj = result.vocabulary;
-      // 转换为数组并按更新时间降序排列
-      vocabulary = Object.values(vocabObj).sort((a, b) => b.updatedAt - a.updatedAt);
-      
+      vocabulary = Object.values(vocabObj);
       renderList();
     });
   }
@@ -67,9 +73,19 @@ document.addEventListener('DOMContentLoaded', () => {
     wordGrid.innerHTML = '';
 
     if (vocabulary.length === 0) {
-      wordGrid.innerHTML = '<div class="empty-vocab" style="grid-column: 1/-1">暂无单词记录。请在浏览网页时点击插件图标进行添加。</div>';
+      wordGrid.innerHTML = '<div class="empty-vocab" style="grid-column: 1/-1">暂无单词记录。请在浏览网页时点击插件图标进行添加，或开启“自动采集”功能。</div>';
       return;
     }
+
+    // 排序逻辑
+    const sortType = sortSelect.value;
+    vocabulary.sort((a, b) => {
+      if (sortType === 'frequency') {
+        return b.count - a.count; // 频率降序
+      } else {
+        return b.updatedAt - a.updatedAt; // 时间降序
+      }
+    });
 
     vocabulary.forEach(item => {
       const card = document.createElement('div');
@@ -84,8 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>${date}</span>
         </div>
         <div class="card-actions">
-          <a class="action-link" href="https://fanyi.baidu.com/#en/zh/${item.word}" target="_blank">百度翻译</a>
-          <a class="action-link" href="https://www.bing.com/dict/search?q=${item.word}" target="_blank">必应词典</a>
+          <a class="action-link" href="https://translate.google.com/?sl=en&tl=zh-CN&text=${item.word}&op=translate" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            Google 翻译
+          </a>
         </div>
         <svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -110,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const vocab = result.vocabulary;
       delete vocab[word];
       chrome.storage.local.set({ vocabulary: vocab }, () => {
-        loadVocabulary(); // 重新加载
+        // 更新内存中的数组，避免重新请求
+        vocabulary = vocabulary.filter(v => v.word !== word);
+        renderList(); 
       });
     });
   }
@@ -122,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fcContent.textContent = "无单词";
       return;
     }
+    // 卡片模式使用当前的排序顺序，默认从高频词开始学
     currentCardIndex = 0;
     showCard(currentCardIndex);
   }
@@ -145,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
   flashcard.addEventListener('click', () => {
     if (vocabulary.length === 0) return;
     const word = vocabulary[currentCardIndex].word;
-    window.open(`https://www.bing.com/dict/search?q=${word}`, '_blank');
+    window.open(`https://translate.google.com/?sl=en&tl=zh-CN&text=${word}&op=translate`, '_blank');
   });
 
 });

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>英语生词本 - 学习模式</title>
+  <title>词汇助手 - 学习模式</title>
   <style>
     body {
       margin: 0;
@@ -72,11 +72,16 @@
       background: #fef2f2;
     }
 
-    /* Tabs */
-    .tabs {
+    /* Tabs & Filters */
+    .toolbar {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 20px;
       border-bottom: 2px solid #e5e7eb;
+    }
+    .tabs {
+      display: flex;
     }
     .tab {
       padding: 10px 20px;
@@ -89,6 +94,21 @@
     .tab.active {
       color: #2563eb;
       border-bottom-color: #2563eb;
+    }
+    .sort-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      color: #4b5563;
+      padding-bottom: 5px;
+    }
+    .sort-select {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #d1d5db;
+      font-size: 13px;
+      color: #374151;
     }
 
     /* List View */
@@ -128,12 +148,16 @@
     .card-actions {
       display: flex;
       gap: 8px;
+      margin-top: 8px;
     }
     .action-link {
       font-size: 12px;
       color: #2563eb;
       text-decoration: none;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .action-link:hover {
       text-decoration: underline;
@@ -176,6 +200,10 @@
       cursor: pointer;
       position: relative;
       user-select: none;
+      transition: transform 0.3s;
+    }
+    .flashcard:hover {
+      transform: scale(1.02);
     }
     .fc-word {
       font-size: 48px;
@@ -186,6 +214,9 @@
       margin-top: 16px;
       color: #9ca3af;
       font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .fc-controls {
       margin-top: 32px;
@@ -224,7 +255,7 @@
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
         </svg>
-        英语生词本
+        词汇助手
       </h1>
       <div class="controls">
         <button class="btn btn-danger" id="clear-all">清空记录</button>
@@ -234,9 +265,18 @@
   </header>
 
   <div class="container">
-    <div class="tabs">
-      <div class="tab active" data-target="list-view">列表模式</div>
-      <div class="tab" data-target="flashcard-view">卡片记忆模式</div>
+    <div class="toolbar">
+      <div class="tabs">
+        <div class="tab active" data-target="list-view">列表模式</div>
+        <div class="tab" data-target="flashcard-view">卡片记忆模式</div>
+      </div>
+      <div class="sort-controls" id="sort-wrapper">
+        <label>排序:</label>
+        <select id="sort-select" class="sort-select">
+          <option value="frequency">按词频 (高到低)</option>
+          <option value="time">按时间 (新到旧)</option>
+        </select>
+      </div>
     </div>
 
     <!-- List View -->
@@ -250,7 +290,14 @@
     <div id="flashcard-view">
       <div class="flashcard" id="flashcard">
         <div class="fc-word" id="fc-content">Ready?</div>
-        <div class="fc-tip">点击查看外部词典释义</div>
+        <div class="fc-tip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          点击查看 Google 翻译
+        </div>
       </div>
       <div class="fc-controls">
         <button class="fc-btn fc-btn-next" id="fc-next">下一个单词</button>
