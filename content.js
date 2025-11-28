@@ -11,8 +11,64 @@ if (!window.hasWordCountListener) {
     if (request.action === "SHOW_STATS") {
       const stats = calculateStats(request.text);
       showPopup(stats);
+    } else if (request.action === "ANALYZE_PAGE") {
+      // 收到分析页面的请求
+      const result = analyzePageWords();
+      sendResponse(result);
     }
   });
+}
+
+/**
+ * 分析页面所有的英语单词
+ */
+function analyzePageWords() {
+  const text = document.body.innerText;
+  
+  // 匹配英语单词 (允许包含连字符和撇号，如 co-operate, don't)
+  const words = text.match(/[a-zA-Z]+(['-][a-zA-Z]+)*/g) || [];
+
+  // 常用停用词列表 (Stop Words)，过滤掉对学习生词无意义的高频词
+  const stopWords = new Set([
+    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", 
+    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at", 
+    "this", "but", "his", "by", "from", "they", "we", "say", "her", 
+    "she", "or", "an", "will", "my", "one", "all", "would", "there", 
+    "their", "what", "so", "up", "out", "if", "about", "who", "get", 
+    "which", "go", "me", "when", "make", "can", "like", "time", "no", 
+    "just", "him", "know", "take", "people", "into", "year", "your", 
+    "good", "some", "could", "them", "see", "other", "than", "then", 
+    "now", "look", "only", "come", "its", "over", "think", "also", 
+    "back", "after", "use", "two", "how", "our", "work", "first", 
+    "well", "way", "even", "new", "want", "because", "any", "these", 
+    "give", "day", "most", "us", "is", "are", "was", "were", "has", "had"
+  ]);
+
+  const frequency = {};
+  
+  words.forEach(word => {
+    const lower = word.toLowerCase();
+    
+    // 过滤掉长度小于2的词（除非是 'a' 或 'i'，但 'a' 已在停用词中，故一律过滤短词）
+    if (lower.length < 2) return;
+    
+    // 过滤停用词
+    if (stopWords.has(lower)) return;
+
+    frequency[lower] = (frequency[lower] || 0) + 1;
+  });
+
+  // 转换为数组并按频率降序排序
+  const sortedList = Object.keys(frequency).map(word => ({
+    word: word,
+    count: frequency[word]
+  })).sort((a, b) => b.count - a.count);
+
+  return {
+    totalWords: words.length, // 总英语单词数
+    filteredWords: sortedList.length, // 过滤后的生词本数量
+    list: sortedList
+  };
 }
 
 /**
@@ -20,7 +76,7 @@ if (!window.hasWordCountListener) {
  * 使用 Intl.Segmenter 实现精准的多语言分词 (支持中文、英文等)。
  */
 function calculateStats(text) {
-  // 使用浏览器原生的分词器，'zh' 环境下对中文分词更友好，这里留空让其自动探测或使用默认
+  // 使用浏览器原生的分词器
   const segmenter = new Intl.Segmenter([], { granularity: 'word' });
   const segments = [...segmenter.segment(text)];
   
@@ -51,7 +107,7 @@ function showPopup(stats) {
   // 挂载 Shadow DOM
   const shadow = host.attachShadow({ mode: 'open' });
 
-  // 样式 (仿 Tailwind CSS 风格，无需外部依赖)
+  // 样式 (仿 Tailwind CSS 风格)
   const style = document.createElement('style');
   style.textContent = `
     :host {
@@ -131,12 +187,6 @@ function showPopup(stats) {
       letter-spacing: 0.05em;
       margin-top: 2px;
     }
-    .footer {
-      margin-top: 12px;
-      font-size: 11px;
-      color: #9ca3af;
-      text-align: right;
-    }
   `;
 
   // HTML 内容
@@ -193,7 +243,7 @@ function showPopup(stats) {
   // 5秒后自动关闭
   setTimeout(removePopup, 5000);
   
-  // 点击弹窗外部关闭 (简化版)
+  // 点击弹窗外部关闭
   document.addEventListener('mousedown', (e) => {
     if (e.target !== host) removePopup();
   }, { once: true });
