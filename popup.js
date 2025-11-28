@@ -7,8 +7,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const totalEl = document.getElementById('total-val');
   const uniqueEl = document.getElementById('unique-val');
   const copyBtn = document.getElementById('copy-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const goStudyLink = document.getElementById('go-study-link');
   
   let currentWordList = [];
+
+  // 导航到学习页
+  goStudyLink.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'study.html' });
+  });
 
   // 获取当前激活的标签页
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -41,7 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
     totalEl.textContent = "0";
     uniqueEl.textContent = "0";
     copyBtn.disabled = true;
+    saveBtn.disabled = true;
     copyBtn.style.opacity = "0.5";
+    saveBtn.style.opacity = "0.5";
   }
 
   function renderList(data) {
@@ -51,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (data.list.length === 0) {
       container.innerHTML = '<div class="empty-state">页面上未发现有价值的英语生词。</div>';
+      saveBtn.disabled = true;
+      saveBtn.style.opacity = "0.5";
       return;
     }
 
@@ -71,20 +82,57 @@ document.addEventListener('DOMContentLoaded', () => {
   copyBtn.addEventListener('click', () => {
     if (currentWordList.length === 0) return;
 
-    // 格式化：单词 (频率)
     const textToCopy = currentWordList
       .map(item => `${item.word} (${item.count})`)
       .join('\n');
     
     navigator.clipboard.writeText(textToCopy).then(() => {
       const originalText = copyBtn.textContent;
-      copyBtn.textContent = "已复制！";
-      copyBtn.style.background = "#059669";
+      copyBtn.textContent = "已复制";
       
       setTimeout(() => {
         copyBtn.textContent = originalText;
-        copyBtn.style.background = "";
       }, 2000);
+    });
+  });
+
+  // 保存功能
+  saveBtn.addEventListener('click', () => {
+    if (currentWordList.length === 0) return;
+
+    // 从 storage 获取现有的生词本
+    chrome.storage.local.get({ vocabulary: {} }, (result) => {
+      const vocab = result.vocabulary;
+      let newCount = 0;
+
+      currentWordList.forEach(item => {
+        if (vocab[item.word]) {
+          // 如果词已存在，增加出现次数，更新时间
+          vocab[item.word].count += item.count;
+          vocab[item.word].updatedAt = Date.now();
+        } else {
+          // 新增词汇
+          vocab[item.word] = {
+            word: item.word,
+            count: item.count,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          newCount++;
+        }
+      });
+
+      // 保存回 storage
+      chrome.storage.local.set({ vocabulary: vocab }, () => {
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = `已保存 ${newCount} 个新词`;
+        saveBtn.style.background = "#059669"; // Green
+        
+        setTimeout(() => {
+          saveBtn.textContent = originalText;
+          saveBtn.style.background = "";
+        }, 2000);
+      });
     });
   });
 });

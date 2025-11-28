@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英语生词本 - 学习模式</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f3f4f6;
+      color: #1f2937;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      background: white;
+      padding: 20px 0;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .header-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+      border: none;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-danger {
+      color: #ef4444;
+      border-color: #fca5a5;
+    }
+    .btn-danger:hover {
+      background: #fef2f2;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 500;
+      color: #6b7280;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+    .tab.active {
+      color: #2563eb;
+      border-bottom-color: #2563eb;
+    }
+
+    /* List View */
+    .word-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .word-card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1px solid transparent;
+    }
+    .word-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border-color: #e5e7eb;
+    }
+    .card-word {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .card-meta {
+      font-size: 12px;
+      color: #6b7280;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .action-link {
+      font-size: 12px;
+      color: #2563eb;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .action-link:hover {
+      text-decoration: underline;
+    }
+    .delete-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: #e5e7eb;
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+    .word-card:hover .delete-icon {
+      color: #9ca3af;
+    }
+    .word-card:hover .delete-icon:hover {
+      color: #ef4444;
+    }
+
+    /* Flashcard Mode */
+    #flashcard-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+    }
+    .flashcard {
+      background: white;
+      width: 400px;
+      height: 250px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+    }
+    .fc-word {
+      font-size: 48px;
+      font-weight: 800;
+      color: #111827;
+    }
+    .fc-tip {
+      margin-top: 16px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+    .fc-controls {
+      margin-top: 32px;
+      display: flex;
+      gap: 16px;
+    }
+    .fc-btn {
+      padding: 12px 24px;
+      border-radius: 50px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .fc-btn:active {
+      transform: scale(0.95);
+    }
+    .fc-btn-next { background: #2563eb; color: white; }
+    .fc-btn-next:hover { background: #1d4ed8; }
+    
+    .hidden { display: none !important; }
+    .empty-vocab {
+      text-align: center;
+      padding: 60px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <h1>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        英语生词本
+      </h1>
+      <div class="controls">
+        <button class="btn btn-danger" id="clear-all">清空记录</button>
+        <button class="btn" id="refresh-list">刷新</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-target="list-view">列表模式</div>
+      <div class="tab" data-target="flashcard-view">卡片记忆模式</div>
+    </div>
+
+    <!-- List View -->
+    <div id="list-view">
+      <div class="word-grid" id="word-grid">
+        <!-- JS will populate this -->
+      </div>
+    </div>
+
+    <!-- Flashcard View -->
+    <div id="flashcard-view">
+      <div class="flashcard" id="flashcard">
+        <div class="fc-word" id="fc-content">Ready?</div>
+        <div class="fc-tip">点击查看外部词典释义</div>
+      </div>
+      <div class="fc-controls">
+        <button class="fc-btn fc-btn-next" id="fc-next">下一个单词</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="study.js"></script>
+</body>
+</html>

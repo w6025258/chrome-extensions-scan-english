@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "选词字数统计 & 英语生词本",
-  "version": "1.1.0",
-  "description": "右键统计选中文字数，或点击图标分析页面英语词频，辅助单词学习。",
+  "version": "1.2.0",
+  "description": "右键统计选中文字数，点击图标分析页面英语词频，并提供生词本记忆功能。",
   "permissions": [
     "contextMenus",
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "action": {
     "default_popup": "popup.html",
