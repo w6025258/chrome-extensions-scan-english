@@ -23,7 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const flashcardView = document.getElementById('flashcard-view');
   const listView = document.getElementById('list-view');
   const fcContent = document.getElementById('fc-content');
-  const fcNext = document.getElementById('fc-next');
+  const fcTranslation = document.getElementById('fc-translation');
+  const fcDont = document.getElementById('fc-dont');
+  const fcKnow = document.getElementById('fc-know');
   const flashcard = document.getElementById('flashcard');
 
   let fullVocabulary = {}; // Map: word -> object
@@ -282,7 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (learningList.length === 0) {
       fcContent.textContent = "生词本空空如也";
+      fcTranslation.style.display = 'none';
+      fcKnow.style.display = 'none';
+      fcDont.style.display = 'none';
       return;
+    } else {
+      fcKnow.style.display = 'inline-block';
+      fcDont.style.display = 'inline-block';
     }
     
     currentCardIndex = 0;
@@ -290,24 +298,92 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showCard(index) {
+    if (learningList.length === 0) {
+         fcContent.textContent = "已全部完成";
+         fcTranslation.style.display = 'none';
+         fcKnow.style.display = 'none';
+         fcDont.style.display = 'none';
+         return;
+    }
+
     if (index >= learningList.length) {
       currentCardIndex = 0; 
     }
     const wordObj = learningList[currentCardIndex];
     fcContent.textContent = wordObj ? wordObj.word : "完成";
+    
+    // 重置翻译气泡
+    fcTranslation.style.display = 'none';
+    fcTranslation.textContent = '';
   }
 
-  fcNext.addEventListener('click', () => {
+  // 点击“不会”：下一个
+  fcDont.addEventListener('click', () => {
     if (learningList.length === 0) return;
     currentCardIndex++;
     if (currentCardIndex >= learningList.length) currentCardIndex = 0;
     showCard(currentCardIndex);
   });
 
-  flashcard.addEventListener('click', () => {
-    if (learningList.length === 0) return;
-    const word = learningList[currentCardIndex].word;
-    window.open(`https://translate.google.com/?sl=en&tl=zh-CN&text=${word}&op=translate`, '_blank');
+  // 点击“会”：加入已学会，移出列表，下一个
+  fcKnow.addEventListener('click', () => {
+     if (learningList.length === 0) return;
+     const word = learningList[currentCardIndex].word;
+     
+     // 更新状态
+     if (fullVocabulary[word]) {
+         fullVocabulary[word].status = 'mastered';
+         fullVocabulary[word].updatedAt = Date.now();
+         
+         // 从当前复习队列移除
+         learningList.splice(currentCardIndex, 1);
+         
+         // 保存
+         saveVocabulary();
+         
+         // 如果移除后 index 越界，修正
+         if (currentCardIndex >= learningList.length) {
+             currentCardIndex = 0;
+         }
+         
+         showCard(currentCardIndex);
+     }
   });
+
+  // 点击卡片：显示翻译气泡
+  flashcard.addEventListener('click', async (e) => {
+    // 避免点到按钮时触发
+    if (e.target.tagName === 'BUTTON') return;
+    if (learningList.length === 0) return;
+
+    const word = learningList[currentCardIndex].word;
+    
+    // 如果已经显示了，就不重复请求
+    if (fcTranslation.style.display === 'block') return;
+
+    fcTranslation.textContent = '加载翻译中...';
+    fcTranslation.style.display = 'block';
+
+    try {
+        const trans = await fetchTranslation(word);
+        fcTranslation.textContent = trans;
+    } catch (err) {
+        console.error(err);
+        fcTranslation.textContent = '翻译失败，请检查网络';
+    }
+  });
+
+  async function fetchTranslation(word) {
+      // 使用 Google Translate API (Client: gtx)
+      // 需要在 manifest.json 中配置 host_permissions: ["https://translate.googleapis.com/*"]
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      // 返回结构通常是 [[["翻译", "原词", ...], ...], ...]
+      if (data && data[0] && data[0][0] && data[0][0][0]) {
+          return data[0][0][0];
+      }
+      return "未找到翻译";
+  }
 
 });

@@ -264,6 +264,8 @@
       position: relative;
       user-select: none;
       transition: transform 0.3s;
+      padding: 20px;
+      box-sizing: border-box;
     }
     .flashcard:hover {
       transform: scale(1.02);
@@ -272,6 +274,7 @@
       font-size: 48px;
       font-weight: 800;
       color: #111827;
+      margin-bottom: 8px;
     }
     .fc-tip {
       margin-top: 16px;
@@ -281,23 +284,57 @@
       align-items: center;
       gap: 4px;
     }
+    
+    /* Translation Bubble inside Flashcard */
+    .fc-translation {
+      margin-top: 12px;
+      background: #eff6ff;
+      color: #1e40af;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 500;
+      animation: fadeIn 0.3s ease;
+      display: none; /* Hidden by default */
+      max-width: 90%;
+      word-wrap: break-word;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .fc-controls {
       margin-top: 32px;
       display: flex;
-      gap: 16px;
+      gap: 20px;
     }
     .fc-btn {
-      padding: 12px 24px;
+      padding: 14px 40px;
       border-radius: 50px;
       border: none;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      transition: transform 0.1s;
-      background: #2563eb;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .fc-btn:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+    .btn-dont {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    .btn-dont:hover { background: #e5e7eb; }
+    
+    .btn-know {
+      background: #10b981;
       color: white;
     }
-    .fc-btn:hover { background: #1d4ed8; }
+    .btn-know:hover { background: #059669; }
     
     .empty-vocab {
       text-align: center;
@@ -367,10 +404,13 @@
     <div id="flashcard-view">
       <div class="flashcard" id="flashcard">
         <div class="fc-word" id="fc-content">Ready?</div>
-        <div class="fc-tip">点击查看 Google 翻译</div>
+        <!-- Translation Bubble -->
+        <div class="fc-translation" id="fc-translation">翻译结果...</div>
+        <div class="fc-tip">点击卡片显示 Google 翻译</div>
       </div>
       <div class="fc-controls">
-        <button class="fc-btn" id="fc-next">下一个单词</button>
+        <button class="fc-btn btn-dont" id="fc-dont">不会</button>
+        <button class="fc-btn btn-know" id="fc-know">会</button>
       </div>
     </div>
   </div>
