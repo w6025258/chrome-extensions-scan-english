@@ -42,24 +42,38 @@ function checkAndAutoCollect() {
 function saveToVocabularySilent(wordList) {
   chrome.storage.local.get({ vocabulary: {} }, (result) => {
     const vocab = result.vocabulary;
+    const MAX_WORDS = 1000;
     
     wordList.forEach(item => {
-      if (vocab[item.word]) {
-        vocab[item.word].count += item.count;
-        vocab[item.word].updatedAt = Date.now();
+      const existing = vocab[item.word];
+
+      // 1. 如果已存在
+      if (existing) {
+        // 如果是已学会(mastered) 或 已忽略(ignored)，则不更新计数，不变成生词，直接跳过
+        if (existing.status === 'mastered' || existing.status === 'ignored') {
+            return;
+        }
+        // 如果是学习中，增加计数
+        existing.count += item.count;
+        existing.updatedAt = Date.now();
       } else {
+        // 2. 如果是新词
+        // 检查容量上限
+        if (Object.keys(vocab).length >= MAX_WORDS) {
+            return; // 满了就不加了
+        }
+        
         vocab[item.word] = {
           word: item.word,
           count: item.count,
           createdAt: Date.now(),
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          status: 'learning'
         };
       }
     });
 
-    chrome.storage.local.set({ vocabulary: vocab }, () => {
-      // console.log(`[生词本] 自动采集了 ${wordList.length} 个单词`);
-    });
+    chrome.storage.local.set({ vocabulary: vocab });
   });
 }
 

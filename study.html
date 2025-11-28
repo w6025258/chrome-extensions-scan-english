@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>词汇助手 - 学习模式</title>
+  <title>词汇助手</title>
   <style>
     body {
       margin: 0;
@@ -12,7 +12,7 @@
       color: #1f2937;
     }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -21,9 +21,12 @@
       padding: 20px 0;
       margin-bottom: 24px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .header-content {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 0 20px;
       display: flex;
@@ -32,7 +35,7 @@
     }
     h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 22px;
       color: #111827;
       display: flex;
       align-items: center;
@@ -72,6 +75,32 @@
       background: #fef2f2;
     }
 
+    /* Batch Add Area */
+    #batch-area {
+      display: none;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    #batch-area textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-family: inherit;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .batch-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
     /* Tabs & Filters */
     .toolbar {
       display: flex;
@@ -79,6 +108,8 @@
       align-items: center;
       margin-bottom: 20px;
       border-bottom: 2px solid #e5e7eb;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .tabs {
       display: flex;
@@ -90,31 +121,29 @@
       color: #6b7280;
       border-bottom: 2px solid transparent;
       margin-bottom: -2px;
+      transition: color 0.2s;
+    }
+    .tab:hover {
+      color: #374151;
     }
     .tab.active {
       color: #2563eb;
       border-bottom-color: #2563eb;
     }
-    .sort-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
+    .stats-info {
       font-size: 13px;
-      color: #4b5563;
-      padding-bottom: 5px;
+      color: #6b7280;
     }
-    .sort-select {
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #d1d5db;
-      font-size: 13px;
-      color: #374151;
+    .limit-warning {
+      color: #ef4444;
+      font-weight: bold;
+      display: none;
     }
 
     /* List View */
     .word-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 16px;
     }
     .word-card {
@@ -124,31 +153,40 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       position: relative;
       transition: transform 0.2s, box-shadow 0.2s;
-      border: 1px solid transparent;
+      border: 1px solid #f3f4f6;
+      display: flex;
+      flex-direction: column;
     }
     .word-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       border-color: #e5e7eb;
     }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
     .card-word {
       font-size: 18px;
       font-weight: 700;
       color: #111827;
-      margin-bottom: 8px;
-      display: block;
+      word-break: break-all;
     }
     .card-meta {
       font-size: 12px;
       color: #6b7280;
+      margin-bottom: 12px;
+      flex: 1;
+    }
+    .card-footer {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .card-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid #f3f4f6;
     }
     .action-link {
       font-size: 12px;
@@ -162,20 +200,45 @@
     .action-link:hover {
       text-decoration: underline;
     }
-    .delete-icon {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      color: #e5e7eb;
-      cursor: pointer;
-      width: 16px;
-      height: 16px;
+    
+    /* Status Actions */
+    .status-actions {
+      display: flex;
+      gap: 6px;
     }
-    .word-card:hover .delete-icon {
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
       color: #9ca3af;
     }
-    .word-card:hover .delete-icon:hover {
-      color: #ef4444;
+    .icon-btn:hover {
+      background: #f3f4f6;
+    }
+    /* Mastered (Green) */
+    .btn-master {
+      color: #10b981;
+      background: #ecfdf5;
+      border-color: #d1fae5;
+    }
+    .btn-master:hover {
+      background: #d1fae5;
+    }
+    /* Ignored (Black/Dark) */
+    .btn-ignore {
+      color: #374151;
+      background: #f3f4f6;
+      border-color: #e5e7eb;
+    }
+    .btn-ignore:hover {
+      background: #e5e7eb;
+      color: #111827;
     }
 
     /* Flashcard Mode */
@@ -231,18 +294,16 @@
       font-weight: 600;
       cursor: pointer;
       transition: transform 0.1s;
+      background: #2563eb;
+      color: white;
     }
-    .fc-btn:active {
-      transform: scale(0.95);
-    }
-    .fc-btn-next { background: #2563eb; color: white; }
-    .fc-btn-next:hover { background: #1d4ed8; }
+    .fc-btn:hover { background: #1d4ed8; }
     
-    .hidden { display: none !important; }
     .empty-vocab {
       text-align: center;
       padding: 60px;
       color: #6b7280;
+      grid-column: 1/-1;
     }
   </style>
 </head>
@@ -258,22 +319,38 @@
         词汇助手
       </h1>
       <div class="controls">
-        <button class="btn btn-danger" id="clear-all">清空记录</button>
-        <button class="btn" id="refresh-list">刷新</button>
+        <div class="stats-info" id="vocab-count">0/1000</div>
+        <button class="btn" id="toggle-batch">批量添加</button>
+        <button class="btn btn-danger" id="clear-all">清空数据</button>
       </div>
     </div>
   </header>
 
   <div class="container">
+    <div id="batch-area">
+      <h3>批量添加单词</h3>
+      <p style="font-size:12px; color:#666;">请输入英语单词，可用空格、逗号或换行分隔。会自动去重和过滤。</p>
+      <textarea id="batch-input" placeholder="example word list..."></textarea>
+      <div class="batch-actions">
+        <button class="btn" id="cancel-batch">取消</button>
+        <button class="btn btn-primary" id="confirm-batch">添加</button>
+      </div>
+      <div id="limit-warning" class="limit-warning" style="margin-top:10px;">
+        词库已满 (1000/1000)，无法继续添加。
+      </div>
+    </div>
+
     <div class="toolbar">
       <div class="tabs">
-        <div class="tab active" data-target="list-view">列表模式</div>
-        <div class="tab" data-target="flashcard-view">卡片记忆模式</div>
+        <div class="tab active" data-target="list-view" data-status="learning">生词本</div>
+        <div class="tab" data-target="list-view" data-status="mastered">已学会</div>
+        <div class="tab" data-target="list-view" data-status="ignored">已忽略</div>
+        <div class="tab" data-target="flashcard-view" data-status="card">卡片模式</div>
       </div>
+      
       <div class="sort-controls" id="sort-wrapper">
-        <label>排序:</label>
-        <select id="sort-select" class="sort-select">
-          <option value="frequency">按词频 (高到低)</option>
+        <select id="sort-select" class="sort-select" style="padding: 6px;">
+          <option value="frequency">按频率 (高到低)</option>
           <option value="time">按时间 (新到旧)</option>
         </select>
       </div>
@@ -290,17 +367,10 @@
     <div id="flashcard-view">
       <div class="flashcard" id="flashcard">
         <div class="fc-word" id="fc-content">Ready?</div>
-        <div class="fc-tip">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-          点击查看 Google 翻译
-        </div>
+        <div class="fc-tip">点击查看 Google 翻译</div>
       </div>
       <div class="fc-controls">
-        <button class="fc-btn fc-btn-next" id="fc-next">下一个单词</button>
+        <button class="fc-btn" id="fc-next">下一个单词</button>
       </div>
     </div>
   </div>

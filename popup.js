@@ -18,39 +18,54 @@ document.addEventListener('DOMContentLoaded', () => {
     autoCollectToggle.checked = result.autoCollect;
   });
 
-  // 监听开关变化
   autoCollectToggle.addEventListener('change', (e) => {
     chrome.storage.local.set({ autoCollect: e.target.checked });
   });
 
-  // 导航到学习页
   goStudyLink.addEventListener('click', () => {
     chrome.tabs.create({ url: 'study.html' });
   });
 
-  // 获取当前激活的标签页
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const activeTab = tabs[0];
-
-    // 确保我们在一个可以注入脚本的网页上
     if (!activeTab || !activeTab.id || activeTab.url.startsWith('chrome://') || activeTab.url.startsWith('edge://')) {
       showError("无法在当前页面运行。请在普通网页上使用。");
       return;
     }
 
-    // 向 content script 发送请求
-    chrome.tabs.sendMessage(activeTab.id, { action: "ANALYZE_PAGE" }, (response) => {
-      // 检查运行时错误 (例如 content script 未加载)
-      if (chrome.runtime.lastError) {
-        showError("请刷新页面后重试，或确保页面加载完成。");
-        return;
-      }
+    // 先获取已有的词汇库，用于过滤 "已学会" 和 "已忽略" 的词
+    chrome.storage.local.get({ vocabulary: {} }, (storageResult) => {
+      const existingVocab = storageResult.vocabulary;
 
-      if (response) {
-        renderList(response);
-      } else {
-        showError("未获取到数据。");
-      }
+      chrome.tabs.sendMessage(activeTab.id, { action: "ANALYZE_PAGE" }, (response) => {
+        if (chrome.runtime.lastError) {
+          showError("请刷新页面后重试，或确保页面加载完成。");
+          return;
+        }
+
+        if (response) {
+          // 过滤逻辑：如果在词库中且状态是 mastered 或 ignored，则不显示为待保存的新词
+          const filteredList = response.list.filter(item => {
+            const existing = existingVocab[item.word];
+            if (existing) {
+              if (existing.status === 'mastered' || existing.status === 'ignored') {
+                return false;
+              }
+            }
+            return true;
+          });
+
+          const displayData = {
+            ...response,
+            list: filteredList,
+            filteredWords: filteredList.length
+          };
+          
+          renderList(displayData);
+        } else {
+          showError("未获取到数据。");
+        }
+      });
     });
   });
 
@@ -70,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentWordList = data.list;
 
     if (data.list.length === 0) {
-      container.innerHTML = '<div class="empty-state">页面上未发现有价值的英语生词。</div>';
+      container.innerHTML = '<div class="empty-state">页面上未发现新单词。<br>(已掌握或忽略的单词已隐藏)</div>';
       saveBtn.disabled = true;
       saveBtn.style.opacity = "0.5";
       return;
@@ -89,31 +104,29 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = html;
   }
 
-  // 复制功能
   copyBtn.addEventListener('click', () => {
     if (currentWordList.length === 0) return;
-
     const textToCopy = currentWordList
       .map(item => `${item.word} (${item.count})`)
       .join('\n');
-    
     navigator.clipboard.writeText(textToCopy).then(() => {
       const originalText = copyBtn.textContent;
       copyBtn.textContent = "已复制";
-      
-      setTimeout(() => {
-        copyBtn.textContent = originalText;
-      }, 2000);
+      setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
     });
   });
 
-  // 保存功能
   saveBtn.addEventListener('click', () => {
     if (currentWordList.length === 0) return;
-    saveWordsToStorage(currentWordList, (newCount) => {
+    saveWordsToStorage(currentWordList, (newCount, full) => {
       const originalText = saveBtn.textContent;
-      saveBtn.textContent = `已保存 ${newCount} 个新词`;
-      saveBtn.style.background = "#059669"; // Green
+      if (full) {
+        saveBtn.textContent = "生词本已满(1000)";
+        saveBtn.style.background = "#ef4444";
+      } else {
+        saveBtn.textContent = `已存 ${newCount} 个新词`;
+        saveBtn.style.background = "#059669";
+      }
       
       setTimeout(() => {
         saveBtn.textContent = originalText;
@@ -122,31 +135,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 提取公共保存逻辑
   function saveWordsToStorage(wordList, callback) {
     chrome.storage.local.get({ vocabulary: {} }, (result) => {
       const vocab = result.vocabulary;
+      const MAX_WORDS = 1000;
       let newCount = 0;
+      let isFull = false;
 
       wordList.forEach(item => {
+        // 如果词库满了，且当前词不在库中，则跳过
+        if (Object.keys(vocab).length >= MAX_WORDS && !vocab[item.word]) {
+            isFull = true;
+            return;
+        }
+
         if (vocab[item.word]) {
-          // 如果词已存在，增加出现次数，更新时间
-          vocab[item.word].count += item.count;
-          vocab[item.word].updatedAt = Date.now();
+          // 已存在，只增加计数（如果状态是 learning）
+          // 这里的列表已经被 UI 过滤过了，所以进来的应该是 learning 或新词
+          // 双重保险：
+          if (vocab[item.word].status !== 'mastered' && vocab[item.word].status !== 'ignored') {
+             vocab[item.word].count += item.count;
+             vocab[item.word].updatedAt = Date.now();
+          }
         } else {
-          // 新增词汇
+          // 新增
           vocab[item.word] = {
             word: item.word,
             count: item.count,
             createdAt: Date.now(),
-            updatedAt: Date.now()
+            updatedAt: Date.now(),
+            status: 'learning' // 默认为学习中
           };
           newCount++;
         }
       });
 
       chrome.storage.local.set({ vocabulary: vocab }, () => {
-        if (callback) callback(newCount);
+        if (callback) callback(newCount, isFull);
       });
     });
   }
