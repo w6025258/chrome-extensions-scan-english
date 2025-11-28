@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "词汇助手",
   "version": "1.2.0",
-  "description": "右键统计选中文字数，点击图标分析页面英语词频，并提供生词本记忆功能。",
+  "description": "点击图标分析页面英语词频，并提供生词本记忆功能。",
   "permissions": [
     "contextMenus",
     "activeTab",
