@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let addedCount = 0;
     words.forEach(rawWord => {
+      // 过滤异常单词
+      if (!isLikelyRealWord(rawWord)) return;
+
       // 检查上限
       if (Object.keys(fullVocabulary).length >= MAX_WORDS && !fullVocabulary[rawWord.toLowerCase()]) {
         return; 
@@ -412,6 +415,22 @@ document.addEventListener('DOMContentLoaded', () => {
           return data[0][0][0];
       }
       return "未找到翻译";
+  }
+
+  /**
+   * 判断是否为“像样”的英语单词 (复用自 content.js 的逻辑)
+   * 用于过滤代码变量、乱码、非单词缩写等
+   */
+  function isLikelyRealWord(word) {
+    // 1. 长度限制
+    if (word.length > 30) return false;
+    // 2. 连续重复字符不能超过2个
+    if (/(.)\1\1/.test(word)) return false;
+    // 3. 必须包含至少一个元音 (a, e, i, o, u, y)
+    if (!/[aeiouyAEIOUY]/.test(word)) return false;
+    // 4. 驼峰命名过滤 (myVariable)
+    if (/[a-z][A-Z]/.test(word)) return false;
+    return true;
   }
 
 });

@@ -76,6 +76,30 @@ function saveToVocabularySilent(wordList) {
 }
 
 /**
+ * 判断是否为“像样”的英语单词
+ * 用于过滤代码变量、乱码、非单词缩写等
+ */
+function isLikelyRealWord(word) {
+  // 1. 长度限制 (太长的通常是拼接词或垃圾数据)
+  if (word.length > 30) return false;
+
+  // 2. 连续重复字符不能超过2个 (如: coool, hhh)
+  if (/(.)\1\1/.test(word)) return false;
+
+  // 3. 必须包含至少一个元音 (a, e, i, o, u, y)
+  // 过滤掉如 "html", "jpg", "src", "btn", "css" 等缩写
+  if (!/[aeiouyAEIOUY]/.test(word)) return false;
+
+  // 4. 驼峰命名过滤 (CamelCase)
+  // 单词中间出现大写字母，通常是代码变量 (e.g. "myWord", "getElementById")
+  // 允许全大写 (HTML) 或首字母大写 (English)
+  // 逻辑：如果有一个小写字母后面紧跟着一个大写字母，认为是驼峰
+  if (/[a-z][A-Z]/.test(word)) return false;
+
+  return true;
+}
+
+/**
  * 分析页面所有的英语单词
  */
 function analyzePageWords() {
@@ -103,6 +127,9 @@ function analyzePageWords() {
   const frequency = {};
   
   words.forEach(word => {
+    // 预校验：过滤掉看起来不正常的单词
+    if (!isLikelyRealWord(word)) return;
+
     const lower = word.toLowerCase();
     
     // 过滤掉长度小于2的词
