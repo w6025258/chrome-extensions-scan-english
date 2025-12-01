@@ -20,7 +20,8 @@ if (!window.hasVocabHelperListener) {
 }
 
 function checkAndAutoCollect() {
-  chrome.storage.local.get({ autoCollect: false }, (result) => {
+  // 默认为 true (开启)
+  chrome.storage.local.get({ autoCollect: true }, (result) => {
     if (result.autoCollect) {
       // 给页面一点时间加载动态内容
       setTimeout(() => {

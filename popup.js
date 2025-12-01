@@ -13,14 +13,34 @@ document.addEventListener('DOMContentLoaded', () => {
   
   let currentWordList = [];
 
-  // 1. 初始化自动采集开关状态
-  chrome.storage.local.get({ autoCollect: false }, (result) => {
+  // 1. 初始化自动采集开关状态 (默认为 true)
+  chrome.storage.local.get({ autoCollect: true }, (result) => {
     autoCollectToggle.checked = result.autoCollect;
+    updateSaveButtonState(result.autoCollect);
   });
 
   autoCollectToggle.addEventListener('change', (e) => {
-    chrome.storage.local.set({ autoCollect: e.target.checked });
+    const isChecked = e.target.checked;
+    chrome.storage.local.set({ autoCollect: isChecked });
+    updateSaveButtonState(isChecked);
   });
+
+  function updateSaveButtonState(isAuto) {
+    if (isAuto) {
+      saveBtn.textContent = "已开启自动保存";
+      saveBtn.disabled = true;
+      saveBtn.style.opacity = "0.7";
+      saveBtn.title = "页面单词会自动加入生词本，无需手动保存";
+    } else {
+      // 只有手动模式下才允许点击保存，防止重复统计
+      if (currentWordList.length > 0) {
+        saveBtn.textContent = "保存到生词本";
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = "1";
+        saveBtn.title = "";
+      }
+    }
+  }
 
   goStudyLink.addEventListener('click', () => {
     chrome.tabs.create({ url: 'study.html' });
@@ -86,10 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (data.list.length === 0) {
       container.innerHTML = '<div class="empty-state">页面上未发现新单词。<br>(已掌握或忽略的单词已隐藏)</div>';
+      // 即使是手动模式，列表为空也不能保存
       saveBtn.disabled = true;
       saveBtn.style.opacity = "0.5";
+      saveBtn.textContent = "无新词可存";
       return;
     }
+
+    // 重新检查自动保存状态以决定按钮状态
+    chrome.storage.local.get({ autoCollect: true }, (res) => {
+      updateSaveButtonState(res.autoCollect);
+    });
 
     let html = '<ul class="word-list">';
     data.list.forEach(item => {
@@ -117,7 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   saveBtn.addEventListener('click', () => {
-    if (currentWordList.length === 0) return;
+    if (currentWordList.length === 0 || saveBtn.disabled) return;
+    
     saveWordsToStorage(currentWordList, (newCount, full) => {
       const originalText = saveBtn.textContent;
       if (full) {
