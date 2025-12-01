@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const MAX_WORDS = 1000;
   
   const wordGrid = document.getElementById('word-grid');
-  // const clearBtn = document.getElementById('clear-all'); // Removed
   const clearLearningBtn = document.getElementById('clear-learning');
   const clearMasteredBtn = document.getElementById('clear-mastered');
   const clearIgnoredBtn = document.getElementById('clear-ignored');
@@ -25,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabMastered = document.getElementById('tab-mastered');
   const tabIgnored = document.getElementById('tab-ignored');
   const tabFlashcard = document.getElementById('tab-flashcard');
+
+  // Chart Elements
+  const barLearning = document.getElementById('bar-learning');
+  const barMastered = document.getElementById('bar-mastered');
+  const barIgnored = document.getElementById('bar-ignored');
 
   const sortSelect = document.getElementById('sort-select');
   const sortWrapper = document.getElementById('sort-wrapper');
@@ -228,6 +232,25 @@ document.addEventListener('DOMContentLoaded', () => {
         limitWarning.style.display = 'inline';
     } else {
         limitWarning.style.display = 'none';
+    }
+
+    // 更新图表 (Chart)
+    if (totalCount === 0) {
+      barLearning.style.width = '0%';
+      barMastered.style.width = '0%';
+      barIgnored.style.width = '0%';
+    } else {
+      const learningPct = (learningCount / totalCount * 100).toFixed(1);
+      const masteredPct = (masteredCount / totalCount * 100).toFixed(1);
+      const ignoredPct = (ignoredCount / totalCount * 100).toFixed(1);
+
+      barLearning.style.width = `${learningPct}%`;
+      barMastered.style.width = `${masteredPct}%`;
+      barIgnored.style.width = `${ignoredPct}%`;
+
+      barLearning.title = `生词本: ${learningCount} (${learningPct}%)`;
+      barMastered.title = `已学会: ${masteredCount} (${masteredPct}%)`;
+      barIgnored.title = `已忽略: ${ignoredCount} (${ignoredPct}%)`;
     }
   }
 
@@ -486,19 +509,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * 判断是否为“像样”的英语单词 (复用自 content.js 的逻辑)
+   * 判断是否为“像样”的英语单词
    * 用于过滤代码变量、乱码、非单词缩写等
    */
   function isLikelyRealWord(word) {
     // 1. 长度限制
     if (word.length > 30) return false;
+
     // 2. 连续重复字符不能超过2个
     if (/(.)\1\1/.test(word)) return false;
-    // 3. 必须包含至少一个元音 (a, e, i, o, u, y)
+
+    // 3. 必须包含至少一个元音
     if (!/[aeiouyAEIOUY]/.test(word)) return false;
-    // 4. 驼峰命名过滤 (myVariable)
+
+    // 4. 驼峰命名过滤 (CamelCase)
     if (/[a-z][A-Z]/.test(word)) return false;
+
     return true;
   }
-
 });

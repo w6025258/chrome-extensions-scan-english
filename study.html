@@ -108,6 +108,28 @@
       gap: 10px;
     }
 
+    /* Progress Chart */
+    .chart-container {
+      display: flex;
+      height: 12px;
+      background: #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .chart-bar {
+      height: 100%;
+      transition: width 0.5s ease-in-out;
+      position: relative;
+    }
+    .bar-learning { background: #2563eb; }
+    .bar-mastered { background: #10b981; }
+    .bar-ignored { background: #9ca3af; }
+    .chart-bar:hover {
+      opacity: 0.9;
+    }
+
     /* Tabs & Filters */
     .toolbar {
       display: flex;
@@ -388,6 +410,13 @@
         <button id="cancel-batch" class="btn">取消</button>
         <button id="confirm-batch" class="btn btn-primary">确认添加</button>
       </div>
+    </div>
+
+    <!-- Progress Chart -->
+    <div class="chart-container" id="vocab-chart">
+      <div class="chart-bar bar-learning" id="bar-learning" title="生词本"></div>
+      <div class="chart-bar bar-mastered" id="bar-mastered" title="已学会"></div>
+      <div class="chart-bar bar-ignored" id="bar-ignored" title="已忽略"></div>
     </div>
 
     <div class="toolbar">

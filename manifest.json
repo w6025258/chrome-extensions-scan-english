@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "词汇助手",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "点击图标分析页面英语词频，并提供生词本记忆功能。",
   "permissions": [
     "activeTab",
