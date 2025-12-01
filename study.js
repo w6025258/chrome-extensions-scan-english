@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const fcDont = document.getElementById('fc-dont');
   const fcKnow = document.getElementById('fc-know');
   const flashcard = document.getElementById('flashcard');
+  const fcAudioBtn = document.getElementById('fc-audio-btn');
+  const fcExternalLink = document.getElementById('fc-external-link');
 
   let fullVocabulary = {}; // Map: word -> object
   let currentTabStatus = 'learning'; // 'learning', 'mastered', 'ignored'
@@ -79,8 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         addedCount++;
       } else {
-        // 如果已存在，即使是 ignored/mastered，手动批量添加时是否要重置为 learning?
-        // 这里策略：手动导入表示强制学习，重置为 learning
         if (fullVocabulary[word].status !== 'learning') {
             fullVocabulary[word].status = 'learning';
             addedCount++;
@@ -165,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 筛选当前 Tab 状态的词
     let list = Object.values(fullVocabulary).filter(item => {
-        // 兼容旧数据，无 status 默认为 learning
         const status = item.status || 'learning';
         return status === currentTabStatus;
     });
@@ -189,36 +188,27 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const date = new Date(item.updatedAt).toLocaleDateString();
       
-      // 根据不同 Tab 显示不同按钮
-      let actionsHtml = '';
+      // 状态切换按钮
+      let statusActionsHtml = '';
       if (currentTabStatus === 'learning') {
-          // 生词本：显示“掌握(绿)”和“忽略(黑)”
-          actionsHtml = `
-            <div class="status-actions">
-                <div class="icon-btn btn-master" title="标记为已学会" data-word="${item.word}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="icon-btn btn-ignore" title="忽略/垃圾数据" data-word="${item.word}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                </div>
+          statusActionsHtml = `
+            <div class="icon-btn btn-master" title="标记为已学会" data-action="master">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div class="icon-btn btn-ignore" title="忽略/垃圾数据" data-action="ignore">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
             </div>
           `;
       } else if (currentTabStatus === 'mastered') {
-          // 已学会：显示“重学”
-          actionsHtml = `
-            <div class="status-actions">
-                <div class="icon-btn btn-ignore" title="重新放入生词本" data-word="${item.word}" style="transform: rotate(180deg)">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                </div>
+          statusActionsHtml = `
+            <div class="icon-btn btn-ignore" title="重新放入生词本" data-action="restore" style="transform: rotate(180deg)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
             </div>
           `;
       } else {
-          // 已忽略：显示“恢复”
-          actionsHtml = `
-            <div class="status-actions">
-                <div class="icon-btn btn-master" title="恢复到生词本" data-word="${item.word}">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                </div>
+          statusActionsHtml = `
+            <div class="icon-btn btn-master" title="恢复到生词本" data-action="restore">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
             </div>
           `;
       }
@@ -226,40 +216,47 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <div class="card-header">
             <span class="card-word">${item.word}</span>
-            ${actionsHtml}
+            <div style="display:flex; gap:6px;">${statusActionsHtml}</div>
         </div>
         <div class="card-meta">
-          <div>频次: ${item.count}</div>
-          <div>更新: ${date}</div>
+          <span>${item.count} 次</span>
+          <span>• ${date}</span>
         </div>
-        <div class="card-footer">
-          <a class="action-link" href="https://translate.google.com/?sl=en&tl=zh-CN&text=${item.word}&op=translate" target="_blank">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-            翻译
+        
+        <div class="trans-bubble" id="bubble-${item.word}"></div>
+
+        <div class="card-actions">
+          <div class="icon-btn" title="朗读" data-action="speak">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </div>
+          <div class="icon-btn" title="显示翻译" data-action="translate">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          </div>
+          <a class="icon-btn" href="https://translate.google.com/?sl=en&tl=zh-CN&text=${item.word}&op=translate" target="_blank" title="打开 Google 翻译">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
           </a>
         </div>
       `;
 
-      // 绑定按钮事件
-      const masterBtn = card.querySelector('.btn-master');
-      const ignoreBtn = card.querySelector('.btn-ignore');
+      // 绑定事件
+      card.querySelectorAll('.icon-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+           const action = btn.dataset.action;
+           if (!action) return; // 外部链接不需要处理
 
-      if (masterBtn) {
-          masterBtn.addEventListener('click', () => {
-              if (currentTabStatus === 'ignored') changeStatus(item.word, 'learning'); // 恢复
-              else changeStatus(item.word, 'mastered'); // 标记掌握
-          });
-      }
-      if (ignoreBtn) {
-          ignoreBtn.addEventListener('click', () => {
-              if (currentTabStatus === 'mastered') changeStatus(item.word, 'learning'); // 重学
-              else changeStatus(item.word, 'ignored'); // 标记忽略
-          });
-      }
+           if (action === 'speak') {
+               playAudio(item.word);
+           } else if (action === 'translate') {
+               toggleBubbleTranslation(item.word, card.querySelector('.trans-bubble'), btn);
+           } else if (action === 'master') {
+               changeStatus(item.word, 'mastered');
+           } else if (action === 'ignore') {
+               changeStatus(item.word, 'ignored');
+           } else if (action === 'restore') {
+               changeStatus(item.word, 'learning');
+           }
+        });
+      });
 
       wordGrid.appendChild(card);
     });
@@ -272,25 +269,58 @@ document.addEventListener('DOMContentLoaded', () => {
         saveVocabulary(() => renderList());
     }
   }
+  
+  function playAudio(word) {
+      // 停止当前正在播放的
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US'; 
+      utterance.rate = 1.0; 
+      window.speechSynthesis.speak(utterance);
+  }
+
+  async function toggleBubbleTranslation(word, bubbleEl, btnEl) {
+      if (bubbleEl.style.display === 'block') {
+          bubbleEl.style.display = 'none';
+          btnEl.classList.remove('active');
+          return;
+      }
+
+      btnEl.classList.add('active');
+      bubbleEl.style.display = 'block';
+      if (!bubbleEl.dataset.loaded) {
+          bubbleEl.textContent = '加载中...';
+          try {
+              const trans = await fetchTranslation(word);
+              bubbleEl.textContent = trans;
+              bubbleEl.dataset.loaded = "true";
+          } catch(err) {
+              bubbleEl.textContent = '翻译失败';
+          }
+      }
+  }
 
   // --- Flashcard Logic ---
 
   function startFlashcards() {
-    // 只能学 'learning' 状态的词
     learningList = Object.values(fullVocabulary).filter(item => {
         const status = item.status || 'learning';
         return status === 'learning';
-    }).sort((a, b) => b.count - a.count); // 默认按高频
+    }).sort((a, b) => b.count - a.count);
 
     if (learningList.length === 0) {
       fcContent.textContent = "生词本空空如也";
       fcTranslation.style.display = 'none';
       fcKnow.style.display = 'none';
       fcDont.style.display = 'none';
+      fcAudioBtn.style.display = 'none';
+      fcExternalLink.style.display = 'none';
       return;
     } else {
       fcKnow.style.display = 'inline-block';
       fcDont.style.display = 'inline-block';
+      fcAudioBtn.style.display = 'flex';
+      fcExternalLink.style.display = 'inline-flex';
     }
     
     currentCardIndex = 0;
@@ -298,26 +328,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showCard(index) {
-    if (learningList.length === 0) {
-         fcContent.textContent = "已全部完成";
-         fcTranslation.style.display = 'none';
-         fcKnow.style.display = 'none';
-         fcDont.style.display = 'none';
-         return;
-    }
+    if (learningList.length === 0) return;
 
     if (index >= learningList.length) {
       currentCardIndex = 0; 
     }
     const wordObj = learningList[currentCardIndex];
-    fcContent.textContent = wordObj ? wordObj.word : "完成";
+    fcContent.textContent = wordObj.word;
     
+    // 更新外部链接
+    fcExternalLink.href = `https://translate.google.com/?sl=en&tl=zh-CN&text=${wordObj.word}&op=translate`;
+
     // 重置翻译气泡
     fcTranslation.style.display = 'none';
     fcTranslation.textContent = '';
   }
 
-  // 点击“不会”：下一个
   fcDont.addEventListener('click', () => {
     if (learningList.length === 0) return;
     currentCardIndex++;
@@ -325,40 +351,46 @@ document.addEventListener('DOMContentLoaded', () => {
     showCard(currentCardIndex);
   });
 
-  // 点击“会”：加入已学会，移出列表，下一个
   fcKnow.addEventListener('click', () => {
      if (learningList.length === 0) return;
      const word = learningList[currentCardIndex].word;
      
-     // 更新状态
      if (fullVocabulary[word]) {
          fullVocabulary[word].status = 'mastered';
          fullVocabulary[word].updatedAt = Date.now();
          
-         // 从当前复习队列移除
          learningList.splice(currentCardIndex, 1);
-         
-         // 保存
          saveVocabulary();
          
-         // 如果移除后 index 越界，修正
+         if (learningList.length === 0) {
+             startFlashcards(); // refresh UI to empty state
+             return;
+         }
+
          if (currentCardIndex >= learningList.length) {
              currentCardIndex = 0;
          }
-         
          showCard(currentCardIndex);
      }
   });
+  
+  // 卡片模式：朗读按钮
+  fcAudioBtn.addEventListener('click', (e) => {
+     e.stopPropagation(); // 阻止触发翻转/显示翻译
+     if (learningList.length > 0) {
+         playAudio(learningList[currentCardIndex].word);
+     }
+  });
 
-  // 点击卡片：显示翻译气泡
+  // 卡片模式：点击卡片显示翻译
   flashcard.addEventListener('click', async (e) => {
-    // 避免点到按钮时触发
-    if (e.target.tagName === 'BUTTON') return;
+    // 避免点到内部按钮或链接时触发
+    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.icon-btn')) return;
+    
     if (learningList.length === 0) return;
 
     const word = learningList[currentCardIndex].word;
     
-    // 如果已经显示了，就不重复请求
     if (fcTranslation.style.display === 'block') return;
 
     fcTranslation.textContent = '加载翻译中...';
@@ -368,18 +400,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const trans = await fetchTranslation(word);
         fcTranslation.textContent = trans;
     } catch (err) {
-        console.error(err);
-        fcTranslation.textContent = '翻译失败，请检查网络';
+        fcTranslation.textContent = '翻译失败';
     }
   });
 
   async function fetchTranslation(word) {
-      // 使用 Google Translate API (Client: gtx)
-      // 需要在 manifest.json 中配置 host_permissions: ["https://translate.googleapis.com/*"]
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`;
       const res = await fetch(url);
       const data = await res.json();
-      // 返回结构通常是 [[["翻译", "原词", ...], ...], ...]
       if (data && data[0] && data[0][0] && data[0][0][0]) {
           return data[0][0][0];
       }

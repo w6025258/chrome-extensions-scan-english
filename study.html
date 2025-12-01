@@ -143,7 +143,7 @@
     /* List View */
     .word-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 16px;
     }
     .word-card {
@@ -166,7 +166,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     .card-word {
       font-size: 18px;
@@ -176,69 +176,67 @@
     }
     .card-meta {
       font-size: 12px;
-      color: #6b7280;
+      color: #9ca3af;
       margin-bottom: 12px;
-      flex: 1;
-    }
-    .card-footer {
       display: flex;
-      justify-content: space-between;
+      gap: 8px;
+    }
+    
+    /* Shared Action Bar & Icons */
+    .card-actions {
+      display: flex;
+      justify-content: flex-start;
       align-items: center;
       margin-top: auto;
       padding-top: 10px;
       border-top: 1px solid #f3f4f6;
-    }
-    .action-link {
-      font-size: 12px;
-      color: #2563eb;
-      text-decoration: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .action-link:hover {
-      text-decoration: underline;
-    }
-    
-    /* Status Actions */
-    .status-actions {
-      display: flex;
-      gap: 6px;
+      gap: 8px;
     }
     .icon-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       border: 1px solid transparent;
       transition: all 0.2s;
-      color: #9ca3af;
+      color: #6b7280;
+      background: transparent;
     }
     .icon-btn:hover {
       background: #f3f4f6;
-    }
-    /* Mastered (Green) */
-    .btn-master {
-      color: #10b981;
-      background: #ecfdf5;
-      border-color: #d1fae5;
-    }
-    .btn-master:hover {
-      background: #d1fae5;
-    }
-    /* Ignored (Black/Dark) */
-    .btn-ignore {
-      color: #374151;
-      background: #f3f4f6;
-      border-color: #e5e7eb;
-    }
-    .btn-ignore:hover {
-      background: #e5e7eb;
       color: #111827;
+    }
+    .icon-btn.active {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    
+    /* Specific Status Colors */
+    .btn-master { color: #10b981; background: #ecfdf5; border-color: #d1fae5; }
+    .btn-master:hover { background: #d1fae5; }
+    .btn-ignore { color: #374151; background: #f3f4f6; border-color: #e5e7eb; }
+    .btn-ignore:hover { background: #e5e7eb; color: #111827; }
+
+    /* Translation Bubble */
+    .trans-bubble {
+      margin-bottom: 12px;
+      background: #eff6ff;
+      color: #1e40af;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      line-height: 1.4;
+      display: none; /* Hidden by default */
+      word-wrap: break-word;
+      animation: fadeIn 0.2s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     /* Flashcard Mode */
@@ -247,12 +245,14 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 60vh;
+      min-height: 60vh;
+      padding-top: 20px;
     }
     .flashcard {
       background: white;
       width: 400px;
-      height: 250px;
+      max-width: 90%;
+      min-height: 280px;
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       display: flex;
@@ -264,45 +264,43 @@
       position: relative;
       user-select: none;
       transition: transform 0.3s;
-      padding: 20px;
+      padding: 30px;
       box-sizing: border-box;
     }
     .flashcard:hover {
       transform: scale(1.02);
     }
-    .fc-word {
-      font-size: 48px;
-      font-weight: 800;
-      color: #111827;
+    .fc-header-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 8px;
     }
+    .fc-word {
+      font-size: 42px;
+      font-weight: 800;
+      color: #111827;
+    }
     .fc-tip {
-      margin-top: 16px;
+      margin-top: 20px;
       color: #9ca3af;
-      font-size: 14px;
+      font-size: 13px;
       display: flex;
       align-items: center;
       gap: 4px;
     }
     
-    /* Translation Bubble inside Flashcard */
     .fc-translation {
-      margin-top: 12px;
+      margin-top: 16px;
       background: #eff6ff;
       color: #1e40af;
-      padding: 8px 16px;
+      padding: 10px 20px;
       border-radius: 20px;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 500;
       animation: fadeIn 0.3s ease;
-      display: none; /* Hidden by default */
-      max-width: 90%;
-      word-wrap: break-word;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
+      display: none;
+      max-width: 100%;
     }
 
     .fc-controls {
@@ -324,18 +322,26 @@
       transform: translateY(1px);
       box-shadow: none;
     }
-    .btn-dont {
-      background: #f3f4f6;
-      color: #374151;
-    }
+    .btn-dont { background: #f3f4f6; color: #374151; }
     .btn-dont:hover { background: #e5e7eb; }
-    
-    .btn-know {
-      background: #10b981;
-      color: white;
-    }
+    .btn-know { background: #10b981; color: white; }
     .btn-know:hover { background: #059669; }
     
+    .fc-link-row {
+      margin-top: 20px;
+    }
+    .link-muted {
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .link-muted:hover {
+      color: #2563eb;
+    }
+
     .empty-vocab {
       text-align: center;
       padding: 60px;
@@ -403,11 +409,26 @@
     <!-- Flashcard View -->
     <div id="flashcard-view">
       <div class="flashcard" id="flashcard">
-        <div class="fc-word" id="fc-content">Ready?</div>
+        <div class="fc-header-row">
+          <div class="fc-word" id="fc-content">Ready?</div>
+          <div class="icon-btn" id="fc-audio-btn" title="朗读" style="border:1px solid #e5e7eb;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </div>
+        </div>
+        
         <!-- Translation Bubble -->
         <div class="fc-translation" id="fc-translation">翻译结果...</div>
+        
         <div class="fc-tip">点击卡片显示 Google 翻译</div>
+
+        <div class="fc-link-row">
+           <a id="fc-external-link" class="link-muted" href="#" target="_blank" title="在 Google 翻译中打开">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+             Google 翻译详情
+           </a>
+        </div>
       </div>
+
       <div class="fc-controls">
         <button class="fc-btn btn-dont" id="fc-dont">不会</button>
         <button class="fc-btn btn-know" id="fc-know">会</button>
