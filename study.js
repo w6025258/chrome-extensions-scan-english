@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const wordGrid = document.getElementById('word-grid');
   const clearBtn = document.getElementById('clear-all');
+  const resetCountBtn = document.getElementById('reset-count-btn');
   const toggleBatchBtn = document.getElementById('toggle-batch');
   const batchArea = document.getElementById('batch-area');
   const batchInput = document.getElementById('batch-input');
@@ -16,6 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const vocabCountEl = document.getElementById('vocab-count');
   
   const tabs = document.querySelectorAll('.tab');
+  const tabLearning = document.getElementById('tab-learning');
+  const tabMastered = document.getElementById('tab-mastered');
+  const tabIgnored = document.getElementById('tab-ignored');
+  const tabFlashcard = document.getElementById('tab-flashcard');
+
   const sortSelect = document.getElementById('sort-select');
   const sortWrapper = document.getElementById('sort-wrapper');
   
@@ -110,6 +116,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // 重置计数
+  resetCountBtn.addEventListener('click', () => {
+      if (confirm('确定要将所有单词的出现次数重置为 0 吗？')) {
+          Object.values(fullVocabulary).forEach(word => {
+              word.count = 0;
+          });
+          saveVocabulary(() => {
+              // 刷新列表
+              renderList();
+              alert('计数已重置。');
+          });
+      }
+  });
+
   sortSelect.addEventListener('change', renderList);
 
   // Tab 切换
@@ -152,12 +172,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateCountUI() {
-    const count = Object.keys(fullVocabulary).length;
-    vocabCountEl.textContent = `${count}/${MAX_WORDS}`;
-    vocabCountEl.style.color = count >= MAX_WORDS ? '#ef4444' : '#6b7280';
+    const totalCount = Object.keys(fullVocabulary).length;
     
-    if (count >= MAX_WORDS) {
-        limitWarning.style.display = 'block';
+    // 分类统计
+    let learningCount = 0;
+    let masteredCount = 0;
+    let ignoredCount = 0;
+    
+    Object.values(fullVocabulary).forEach(item => {
+        const s = item.status || 'learning';
+        if (s === 'learning') learningCount++;
+        else if (s === 'mastered') masteredCount++;
+        else if (s === 'ignored') ignoredCount++;
+    });
+
+    // 更新 Tab 显示
+    if(tabLearning) tabLearning.textContent = `生词本 (${learningCount})`;
+    if(tabMastered) tabMastered.textContent = `已学会 (${masteredCount})`;
+    if(tabIgnored) tabIgnored.textContent = `已忽略 (${ignoredCount})`;
+    if(tabFlashcard) tabFlashcard.textContent = `单词卡片 (${learningCount})`;
+
+    // 更新头部总容量显示
+    vocabCountEl.textContent = `${totalCount}/${MAX_WORDS}`;
+    vocabCountEl.style.color = totalCount >= MAX_WORDS ? '#ef4444' : '#6b7280';
+    
+    if (totalCount >= MAX_WORDS) {
+        limitWarning.style.display = 'inline';
     } else {
         limitWarning.style.display = 'none';
     }

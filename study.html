@@ -74,6 +74,13 @@
     .btn-danger:hover {
       background: #fef2f2;
     }
+    .btn-warning {
+      color: #d97706;
+      border-color: #fcd34d;
+    }
+    .btn-warning:hover {
+      background: #fffbeb;
+    }
 
     /* Batch Add Area */
     #batch-area {
@@ -133,6 +140,9 @@
     .stats-info {
       font-size: 13px;
       color: #6b7280;
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
     }
     .limit-warning {
       color: #ef4444;
@@ -362,78 +372,76 @@
         词汇助手
       </h1>
       <div class="controls">
-        <div class="stats-info" id="vocab-count">0/1000</div>
-        <button class="btn" id="toggle-batch">批量添加</button>
-        <button class="btn btn-danger" id="clear-all">清空数据</button>
+        <button id="toggle-batch" class="btn">批量添加</button>
+        <button id="reset-count-btn" class="btn btn-warning">重置计数</button>
+        <button id="clear-all" class="btn btn-danger">清空所有</button>
       </div>
     </div>
   </header>
 
   <div class="container">
     <div id="batch-area">
-      <h3>批量添加单词</h3>
-      <p style="font-size:12px; color:#666;">请输入英语单词，可用空格、逗号或换行分隔。会自动去重和过滤。</p>
-      <textarea id="batch-input" placeholder="example word list..."></textarea>
+      <textarea id="batch-input" placeholder="请在此处粘贴英语文章或单词列表（将自动过滤非单词内容和停用词）..."></textarea>
       <div class="batch-actions">
-        <button class="btn" id="cancel-batch">取消</button>
-        <button class="btn btn-primary" id="confirm-batch">添加</button>
-      </div>
-      <div id="limit-warning" class="limit-warning" style="margin-top:10px;">
-        词库已满 (1000/1000)，无法继续添加。
+        <button id="cancel-batch" class="btn">取消</button>
+        <button id="confirm-batch" class="btn btn-primary">确认添加</button>
       </div>
     </div>
 
     <div class="toolbar">
       <div class="tabs">
-        <div class="tab active" data-target="list-view" data-status="learning">生词本</div>
-        <div class="tab" data-target="list-view" data-status="mastered">已学会</div>
-        <div class="tab" data-target="list-view" data-status="ignored">已忽略</div>
-        <div class="tab" data-target="flashcard-view" data-status="card">卡片模式</div>
+        <div class="tab active" data-target="list-view" data-status="learning" id="tab-learning">生词本</div>
+        <div class="tab" data-target="list-view" data-status="mastered" id="tab-mastered">已学会</div>
+        <div class="tab" data-target="list-view" data-status="ignored" id="tab-ignored">已忽略</div>
+        <div class="tab" data-target="flashcard-view" id="tab-flashcard">单词卡片</div>
       </div>
       
-      <div class="sort-controls" id="sort-wrapper">
-        <select id="sort-select" class="sort-select" style="padding: 6px;">
-          <option value="frequency">按频率 (高到低)</option>
-          <option value="time">按时间 (新到旧)</option>
+      <div class="stats-info" id="sort-wrapper">
+        <span class="limit-warning" id="limit-warning" style="margin-right:10px;">(已满)</span>
+        <span style="margin-right: 6px;">容量: <span id="vocab-count">0/1000</span></span>
+        <select id="sort-select" class="btn" style="padding: 6px 12px; font-weight:normal;">
+          <option value="frequency">按出现频率</option>
+          <option value="time">按更新时间</option>
         </select>
       </div>
     </div>
 
-    <!-- List View -->
     <div id="list-view">
       <div class="word-grid" id="word-grid">
-        <!-- JS will populate this -->
+        <!-- JS 渲染列表 -->
       </div>
     </div>
 
-    <!-- Flashcard View -->
     <div id="flashcard-view">
       <div class="flashcard" id="flashcard">
         <div class="fc-header-row">
-          <div class="fc-word" id="fc-content">Ready?</div>
-          <div class="icon-btn" id="fc-audio-btn" title="朗读" style="border:1px solid #e5e7eb;">
-             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-          </div>
+          <span class="fc-word" id="fc-content">Word</span>
         </div>
         
-        <!-- Translation Bubble -->
-        <div class="fc-translation" id="fc-translation">翻译结果...</div>
+        <div class="fc-translation" id="fc-translation"></div>
         
-        <div class="fc-tip">点击卡片显示 Google 翻译</div>
+        <div class="fc-tip">点击卡片显示翻译</div>
+      </div>
 
-        <div class="fc-link-row">
-           <a id="fc-external-link" class="link-muted" href="#" target="_blank" title="在 Google 翻译中打开">
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-             Google 翻译详情
-           </a>
-        </div>
+      <div class="fc-link-row">
+        <a id="fc-external-link" href="#" target="_blank" class="link-muted">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          Google 翻译
+        </a>
+      </div>
+
+      <div class="fc-controls">
+         <div class="icon-btn" id="fc-audio-btn" style="width:40px; height:40px; border-radius:50%; border:1px solid #d1d5db;" title="朗读">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+         </div>
       </div>
 
       <div class="fc-controls">
         <button class="fc-btn btn-dont" id="fc-dont">不会</button>
-        <button class="fc-btn btn-know" id="fc-know">会</button>
+        <button class="fc-btn btn-know" id="fc-know">会了</button>
       </div>
     </div>
+
   </div>
 
   <script src="study.js"></script>
