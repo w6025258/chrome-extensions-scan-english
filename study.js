@@ -6,7 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const MAX_WORDS = 1000;
   
   const wordGrid = document.getElementById('word-grid');
-  const clearBtn = document.getElementById('clear-all');
+  // const clearBtn = document.getElementById('clear-all'); // Removed
+  const clearLearningBtn = document.getElementById('clear-learning');
+  const clearMasteredBtn = document.getElementById('clear-mastered');
+  const clearIgnoredBtn = document.getElementById('clear-ignored');
+
   const resetCountBtn = document.getElementById('reset-count-btn');
   const toggleBatchBtn = document.getElementById('toggle-batch');
   const batchArea = document.getElementById('batch-area');
@@ -107,25 +111,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 清空数据
-  clearBtn.addEventListener('click', () => {
-    if (confirm('确定要清空所有数据（包括已掌握和忽略的词）吗？此操作无法撤销。')) {
-      chrome.storage.local.remove('vocabulary', () => {
-        loadVocabulary();
-      });
+  // 通用清空函数
+  function clearByStatus(status, label) {
+    const itemsToDelete = Object.values(fullVocabulary).filter(item => {
+        const s = item.status || 'learning';
+        return s === status;
+    });
+
+    if (itemsToDelete.length === 0) {
+        alert(`“${label}”列表已经是空的。`);
+        return;
     }
-  });
+
+    if (confirm(`确定要清空“${label}”列表吗？(共 ${itemsToDelete.length} 个单词)\n此操作无法撤销。`)) {
+        // 重建对象，过滤掉目标状态的词
+        const newVocab = {};
+        Object.values(fullVocabulary).forEach(item => {
+            const s = item.status || 'learning';
+            if (s !== status) {
+                newVocab[item.word] = item;
+            }
+        });
+        
+        fullVocabulary = newVocab;
+        saveVocabulary(() => {
+            alert(`已清空“${label}”。`);
+            renderList();
+        });
+    }
+  }
+
+  clearLearningBtn.addEventListener('click', () => clearByStatus('learning', '生词本'));
+  clearMasteredBtn.addEventListener('click', () => clearByStatus('mastered', '已学会'));
+  clearIgnoredBtn.addEventListener('click', () => clearByStatus('ignored', '已忽略'));
 
   // 重置计数
   resetCountBtn.addEventListener('click', () => {
-      if (confirm('确定要将所有单词的出现次数重置为 0 吗？')) {
+      if (confirm('确定要将所有单词（包括生词、学会、忽略）的出现频率计数重置为 0 吗？')) {
           Object.values(fullVocabulary).forEach(word => {
               word.count = 0;
           });
           saveVocabulary(() => {
-              // 刷新列表
               renderList();
-              alert('计数已重置。');
+              alert('所有计数已重置。');
           });
       }
   });
