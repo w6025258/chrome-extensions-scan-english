@@ -1,3 +1,4 @@
+
 /**
  * content.js
  * 运行在网页上。负责分析页面单词并与扩展 Popup 通信。
@@ -40,7 +41,15 @@ function checkAndAutoCollect() {
 function saveToVocabularySilent(wordList) {
   chrome.storage.local.get({ vocabulary: {} }, (result) => {
     const vocab = result.vocabulary;
-    const MAX_WORDS = 1000;
+    const MAX_LEARNING_WORDS = 1000;
+    
+    // 计算当前生词本(learning)的数量
+    let learningCount = 0;
+    Object.values(vocab).forEach(item => {
+      if (!item.status || item.status === 'learning') {
+        learningCount++;
+      }
+    });
     
     wordList.forEach(item => {
       const existing = vocab[item.word];
@@ -56,9 +65,9 @@ function saveToVocabularySilent(wordList) {
         existing.updatedAt = Date.now();
       } else {
         // 2. 如果是新词
-        // 检查容量上限
-        if (Object.keys(vocab).length >= MAX_WORDS) {
-            return; // 满了就不加了
+        // 检查生词本容量上限
+        if (learningCount >= MAX_LEARNING_WORDS) {
+            return; // 生词本满了就不加了
         }
         
         vocab[item.word] = {
@@ -68,6 +77,8 @@ function saveToVocabularySilent(wordList) {
           updatedAt: Date.now(),
           status: 'learning'
         };
+        // 增加计数，确保本次循环后续的新词能正确判断是否超限
+        learningCount++;
       }
     });
 

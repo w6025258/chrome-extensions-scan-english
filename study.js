@@ -1,9 +1,10 @@
+
 /**
  * study.js
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const MAX_WORDS = 1000;
+  const MAX_LEARNING_WORDS = 1000;
   
   const wordGrid = document.getElementById('word-grid');
   const clearLearningBtn = document.getElementById('clear-learning');
@@ -69,9 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const words = text.match(/\b[a-zA-Z]+(['-][a-zA-Z]+)*\b/g) || [];
     if (words.length === 0) return;
 
-    const currentCount = Object.keys(fullVocabulary).length;
-    if (currentCount >= MAX_WORDS) {
-      alert('词库已达到 1000 词上限，无法添加。');
+    // 计算当前的生词数
+    let learningCount = 0;
+    Object.values(fullVocabulary).forEach(v => {
+      if (!v.status || v.status === 'learning') learningCount++;
+    });
+
+    if (learningCount >= MAX_LEARNING_WORDS) {
+      alert(`生词本已达到 ${MAX_LEARNING_WORDS} 词上限，无法添加新词。(已学会和已忽略的词不占用此额度)`);
       return;
     }
 
@@ -80,15 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
       // 过滤异常单词
       if (!isLikelyRealWord(rawWord)) return;
 
-      // 检查上限
-      if (Object.keys(fullVocabulary).length >= MAX_WORDS && !fullVocabulary[rawWord.toLowerCase()]) {
-        return; 
-      }
-
       const word = rawWord.toLowerCase();
       if (word.length < 2) return;
 
       if (!fullVocabulary[word]) {
+        // 检查上限
+        if (learningCount >= MAX_LEARNING_WORDS) {
+            return; 
+        }
+
         fullVocabulary[word] = {
           word: word,
           count: 1,
@@ -97,11 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
           status: 'learning'
         };
         addedCount++;
+        learningCount++; // 实时增加计数
       } else {
-        if (fullVocabulary[word].status !== 'learning') {
-            fullVocabulary[word].status = 'learning';
-            addedCount++;
-        }
+        // 已存在的词，无论状态如何，都允许更新计数
+        // 如果是从其他状态变回 learning，这里暂不做自动变更，只增加计数。
+        // 如果原本就是 learning，也只增加计数。
+        // 但如果用户希望批量导入能把 'ignored' 恢复为 'learning'，可以在这里加逻辑。
+        // 这里保持简单：只更新计数，不改变现有状态。
         fullVocabulary[word].count += 1;
         fullVocabulary[word].updatedAt = Date.now();
       }
@@ -224,11 +232,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if(tabIgnored) tabIgnored.textContent = `已忽略 (${ignoredCount})`;
     if(tabFlashcard) tabFlashcard.textContent = `单词卡片 (${learningCount})`;
 
-    // 更新头部总容量显示
-    vocabCountEl.textContent = `${totalCount}/${MAX_WORDS}`;
-    vocabCountEl.style.color = totalCount >= MAX_WORDS ? '#ef4444' : '#6b7280';
+    // 更新头部总容量显示 (改为只显示生词本容量)
+    vocabCountEl.textContent = `${learningCount}/${MAX_LEARNING_WORDS} (生词)`;
+    vocabCountEl.style.color = learningCount >= MAX_LEARNING_WORDS ? '#ef4444' : '#6b7280';
     
-    if (totalCount >= MAX_WORDS) {
+    if (learningCount >= MAX_LEARNING_WORDS) {
         limitWarning.style.display = 'inline';
     } else {
         limitWarning.style.display = 'none';
@@ -248,9 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
       barMastered.style.width = `${masteredPct}%`;
       barIgnored.style.width = `${ignoredPct}%`;
 
-      barLearning.title = `生词本: ${learningCount} (${learningPct}%)`;
-      barMastered.title = `已学会: ${masteredCount} (${masteredPct}%)`;
-      barIgnored.title = `已忽略: ${ignoredCount} (${ignoredPct}%)`;
+      barLearning.title = `生词本: ${learningCount} (占总数 ${learningPct}%)`;
+      barMastered.title = `已学会: ${masteredCount} (占总数 ${masteredPct}%)`;
+      barIgnored.title = `已忽略: ${ignoredCount} (占总数 ${ignoredPct}%)`;
     }
   }
 

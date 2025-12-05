@@ -1,3 +1,4 @@
+
 /**
  * popup.js
  */
@@ -166,34 +167,40 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveWordsToStorage(wordList, callback) {
     chrome.storage.local.get({ vocabulary: {} }, (result) => {
       const vocab = result.vocabulary;
-      const MAX_WORDS = 1000;
+      const MAX_LEARNING_WORDS = 1000;
       let newCount = 0;
       let isFull = false;
 
-      wordList.forEach(item => {
-        // 如果词库满了，且当前词不在库中，则跳过
-        if (Object.keys(vocab).length >= MAX_WORDS && !vocab[item.word]) {
-            isFull = true;
-            return;
-        }
+      // 计算当前生词本数量
+      let learningCount = 0;
+      Object.values(vocab).forEach(v => {
+        if (!v.status || v.status === 'learning') learningCount++;
+      });
 
+      wordList.forEach(item => {
         if (vocab[item.word]) {
           // 已存在，只增加计数（如果状态是 learning）
           // 这里的列表已经被 UI 过滤过了，所以进来的应该是 learning 或新词
-          // 双重保险：
           if (vocab[item.word].status !== 'mastered' && vocab[item.word].status !== 'ignored') {
              vocab[item.word].count += item.count;
              vocab[item.word].updatedAt = Date.now();
           }
         } else {
+          // 检查生词本上限
+          if (learningCount >= MAX_LEARNING_WORDS) {
+            isFull = true;
+            return;
+          }
+
           // 新增
           vocab[item.word] = {
             word: item.word,
             count: item.count,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            status: 'learning' // 默认为学习中
+            status: 'learning'
           };
+          learningCount++;
           newCount++;
         }
       });
