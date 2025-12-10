@@ -1,5 +1,6 @@
 
 
+
 /**
  * study.js
  */
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Spelling elements
   const spMeaning = document.getElementById('sp-meaning');
+  const spMask = document.getElementById('sp-mask');
   const spInput = document.getElementById('sp-input');
   const spFeedback = document.getElementById('sp-feedback');
   const spHintBtn = document.getElementById('sp-hint-btn');
@@ -70,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let spellingList = [];
   let currentSpellingIndex = 0;
   let isSpellingCorrect = false;
+  let currentMaskIndices = new Set(); // indices of letters already revealed
 
   // 初始化
   loadVocabulary();
@@ -581,13 +584,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startSpelling() {
     spellingList = Object.values(fullVocabulary).filter(item => {
-        const status = item.status || 'learning';
-        return status === 'learning';
+        // 只使用已经学会的单词进行拼写练习
+        return item.status === 'mastered';
     }).sort((a, b) => b.count - a.count);
 
     if (spellingList.length === 0) {
-        spMeaning.textContent = "生词本为空，请先添加单词";
+        spMeaning.textContent = "“已学会”列表为空，请先在生词本或卡片模式中标记单词为“会了”。";
         spInput.disabled = true;
+        spMask.innerHTML = '';
         return;
     }
     
@@ -603,6 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const wordObj = spellingList[currentSpellingIndex];
       isSpellingCorrect = false;
+      currentMaskIndices.clear();
 
       // Reset UI
       spInput.value = '';
@@ -611,6 +616,9 @@ document.addEventListener('DOMContentLoaded', () => {
       spFeedback.textContent = '';
       spFeedback.className = 'sp-feedback';
       spMeaning.textContent = '加载释义中...';
+      
+      // Render Mask (initial state: all hidden)
+      renderMask(wordObj.word);
 
       // Load translation
       try {
@@ -621,6 +629,33 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
           spMeaning.textContent = "无法加载释义 (请检查网络)";
       }
+  }
+
+  function renderMask(word) {
+    spMask.innerHTML = '';
+    const chars = word.split('');
+    chars.forEach((char, idx) => {
+        const span = document.createElement('span');
+        span.className = 'mask-char';
+        
+        // 如果是空格或非字母符号，直接显示
+        if (!/[a-zA-Z]/.test(char)) {
+            span.textContent = char;
+            span.classList.add('space'); // 简单的样式处理
+            // 标记为已揭示，避免 hint 选中
+            currentMaskIndices.add(idx); 
+        } else {
+            // 如果已经在已揭示集合中，则显示字母
+            if (currentMaskIndices.has(idx)) {
+                span.textContent = char;
+                span.classList.add('revealed');
+            } else {
+                // 否则显示下划线（CSS控制border-bottom，内容留空）
+                span.textContent = '';
+            }
+        }
+        spMask.appendChild(span);
+    });
   }
 
   function checkSpelling() {
@@ -639,6 +674,11 @@ document.addEventListener('DOMContentLoaded', () => {
           spFeedback.className = 'sp-feedback feedback-success';
           playAudio(targetWord);
           
+          // Fully reveal mask
+          const word = spellingList[currentSpellingIndex].word;
+          for(let i=0; i<word.length; i++) currentMaskIndices.add(i);
+          renderMask(word);
+
           // Auto next after 1.5s
           setTimeout(() => {
               // 检查用户是否在此期间手动切走了
@@ -671,25 +711,30 @@ document.addEventListener('DOMContentLoaded', () => {
   spSubmitBtn.addEventListener('click', checkSpelling);
   
   spNextBtn.addEventListener('click', () => {
-      // Show the word briefly then move on? Or just move on.
-      // Let's just move on for now.
+      // Skip logic: maybe reveal answer then move? Or just move.
+      // Let's just move.
       nextSpellingCard();
   });
 
   spHintBtn.addEventListener('click', () => {
       if (spellingList.length === 0) return;
       const targetWord = spellingList[currentSpellingIndex].word;
-      const currentInput = spInput.value;
       
-      // Simple Hint: Fill the next character
-      if (currentInput.length < targetWord.length) {
-          const nextChar = targetWord[currentInput.length];
-          // 如果用户当前输入的前缀是对的，补全下一个；如果是错的，提示首字母
-          if (targetWord.startsWith(currentInput)) {
-              spInput.value += nextChar;
-          } else {
-              spInput.value = targetWord[0];
+      // 找出所有还未揭示的字母索引
+      const hiddenIndices = [];
+      for(let i = 0; i < targetWord.length; i++) {
+          if (!currentMaskIndices.has(i) && /[a-zA-Z]/.test(targetWord[i])) {
+              hiddenIndices.push(i);
           }
+      }
+
+      if (hiddenIndices.length > 0) {
+          // 随机揭示一个
+          const randomIdx = Math.floor(Math.random() * hiddenIndices.length);
+          const idxToReveal = hiddenIndices[randomIdx];
+          
+          currentMaskIndices.add(idxToReveal);
+          renderMask(targetWord);
           spInput.focus();
       }
   });
