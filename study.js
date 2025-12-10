@@ -1,4 +1,5 @@
 
+
 /**
  * study.js
  */
@@ -47,8 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let fullVocabulary = {}; // Map: word -> object
   let currentTabStatus = 'learning'; // 'learning', 'mastered', 'ignored'
+  
+  // Flashcard state
   let currentCardIndex = 0;
   let learningList = []; // Array for flashcards
+  const translationCache = {}; // Cache for API responses
 
   // 初始化
   loadVocabulary();
@@ -105,11 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         addedCount++;
         learningCount++; // 实时增加计数
       } else {
-        // 已存在的词，无论状态如何，都允许更新计数
-        // 如果是从其他状态变回 learning，这里暂不做自动变更，只增加计数。
-        // 如果原本就是 learning，也只增加计数。
-        // 但如果用户希望批量导入能把 'ignored' 恢复为 'learning'，可以在这里加逻辑。
-        // 这里保持简单：只更新计数，不改变现有状态。
         fullVocabulary[word].count += 1;
         fullVocabulary[word].updatedAt = Date.now();
       }
@@ -281,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortType = sortSelect.value;
     list.sort((a, b) => {
       if (sortType === 'frequency') return b.count - a.count;
+      if (sortType === 'alpha') return a.word.localeCompare(b.word);
       return b.updatedAt - a.updatedAt;
     });
 
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
           </div>
           <div class="icon-btn" title="显示翻译" data-action="translate">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
           </div>
           <a class="icon-btn" href="https://translate.google.com/?sl=en&tl=zh-CN&text=${item.word}&op=translate" target="_blank" title="打开 Google 翻译">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.querySelectorAll('.icon-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
            const action = btn.dataset.action;
-           if (!action) return; // 外部链接不需要处理
+           if (!action) return;
 
            if (action === 'speak') {
                playAudio(item.word);
@@ -373,7 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   function playAudio(word) {
-      // 停止当前正在播放的
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(word);
       utterance.lang = 'en-US'; 
@@ -404,7 +403,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Flashcard Logic ---
 
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Only active in flashcard view and not in batch text area
+    if (flashcardView.style.display === 'none') return;
+    if (batchArea.style.display === 'block') return;
+    
+    switch(e.code) {
+      case 'Space':
+        e.preventDefault();
+        flashcard.click(); // Show translation
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        fcKnow.click(); // Mastered
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        fcDont.click(); // Next
+        break;
+    }
+  });
+
   function startFlashcards() {
+    // Get all learning words and sort by frequency (or maybe random?)
+    // Here we stick to frequency to learn most common words first.
     learningList = Object.values(fullVocabulary).filter(item => {
         const status = item.status || 'learning';
         return status === 'learning';
@@ -446,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fcTranslation.textContent = '';
   }
 
+  // "我不会" -> 下一个
   fcDont.addEventListener('click', () => {
     if (learningList.length === 0) return;
     currentCardIndex++;
@@ -453,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showCard(currentCardIndex);
   });
 
+  // "我学会了" -> 移出生词本
   fcKnow.addEventListener('click', () => {
      if (learningList.length === 0) return;
      const word = learningList[currentCardIndex].word;
@@ -461,14 +486,17 @@ document.addEventListener('DOMContentLoaded', () => {
          fullVocabulary[word].status = 'mastered';
          fullVocabulary[word].updatedAt = Date.now();
          
+         // Remove from current session list
          learningList.splice(currentCardIndex, 1);
          saveVocabulary();
          
          if (learningList.length === 0) {
-             startFlashcards(); // refresh UI to empty state
+             startFlashcards(); // Refresh to empty state
              return;
          }
 
+         // Current index now points to the next card (because of splice),
+         // so we check bounds but don't increment.
          if (currentCardIndex >= learningList.length) {
              currentCardIndex = 0;
          }
@@ -478,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 卡片模式：朗读按钮
   fcAudioBtn.addEventListener('click', (e) => {
-     e.stopPropagation(); // 阻止触发翻转/显示翻译
+     e.stopPropagation(); // 阻止触发翻转
      if (learningList.length > 0) {
          playAudio(learningList[currentCardIndex].word);
      }
@@ -493,7 +521,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const word = learningList[currentCardIndex].word;
     
-    if (fcTranslation.style.display === 'block') return;
+    // Toggle logic
+    if (fcTranslation.style.display === 'block') {
+        // Optional: Clicking again could hide it, but usually we just leave it open.
+        // fcTranslation.style.display = 'none';
+        return;
+    }
 
     fcTranslation.textContent = '加载翻译中...';
     fcTranslation.style.display = 'block';
@@ -507,32 +540,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   async function fetchTranslation(word) {
+      // Check Cache
+      if (translationCache[word]) {
+          return translationCache[word];
+      }
+
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data && data[0] && data[0][0] && data[0][0][0]) {
-          return data[0][0][0];
+          const result = data[0][0][0];
+          translationCache[word] = result; // Save to cache
+          return result;
       }
       return "未找到翻译";
   }
 
-  /**
-   * 判断是否为“像样”的英语单词
-   * 用于过滤代码变量、乱码、非单词缩写等
-   */
   function isLikelyRealWord(word) {
-    // 1. 长度限制
     if (word.length > 30) return false;
-
-    // 2. 连续重复字符不能超过2个
     if (/(.)\1\1/.test(word)) return false;
-
-    // 3. 必须包含至少一个元音
     if (!/[aeiouyAEIOUY]/.test(word)) return false;
-
-    // 4. 驼峰命名过滤 (CamelCase)
     if (/[a-z][A-Z]/.test(word)) return false;
-
     return true;
   }
 });
