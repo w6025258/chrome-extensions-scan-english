@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabMastered = document.getElementById('tab-mastered');
   const tabIgnored = document.getElementById('tab-ignored');
   const tabFlashcard = document.getElementById('tab-flashcard');
+  const tabSpelling = document.getElementById('tab-spelling');
 
   // Chart Elements
   const barLearning = document.getElementById('bar-learning');
@@ -35,9 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const sortSelect = document.getElementById('sort-select');
   const sortWrapper = document.getElementById('sort-wrapper');
   
-  // Flashcard elements
+  // View Containers
   const flashcardView = document.getElementById('flashcard-view');
   const listView = document.getElementById('list-view');
+  const spellingView = document.getElementById('spelling-view');
+
+  // Flashcard elements
   const fcContent = document.getElementById('fc-content');
   const fcTranslation = document.getElementById('fc-translation');
   const fcDont = document.getElementById('fc-dont');
@@ -46,6 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const fcAudioBtn = document.getElementById('fc-audio-btn');
   const fcExternalLink = document.getElementById('fc-external-link');
 
+  // Spelling elements
+  const spMeaning = document.getElementById('sp-meaning');
+  const spInput = document.getElementById('sp-input');
+  const spFeedback = document.getElementById('sp-feedback');
+  const spHintBtn = document.getElementById('sp-hint-btn');
+  const spSubmitBtn = document.getElementById('sp-submit-btn');
+  const spNextBtn = document.getElementById('sp-next-btn');
+
   let fullVocabulary = {}; // Map: word -> object
   let currentTabStatus = 'learning'; // 'learning', 'mastered', 'ignored'
   
@@ -53,6 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentCardIndex = 0;
   let learningList = []; // Array for flashcards
   const translationCache = {}; // Cache for API responses
+
+  // Spelling state
+  let spellingList = [];
+  let currentSpellingIndex = 0;
+  let isSpellingCorrect = false;
 
   // 初始化
   loadVocabulary();
@@ -180,17 +197,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = tab.dataset.target;
       const status = tab.dataset.status;
 
+      // Reset views
+      listView.style.display = 'none';
+      flashcardView.style.display = 'none';
+      spellingView.style.display = 'none';
+      sortWrapper.style.display = 'none';
+
       if (target === 'list-view') {
         currentTabStatus = status;
         listView.style.display = 'block';
-        flashcardView.style.display = 'none';
         sortWrapper.style.display = 'flex';
         renderList();
-      } else {
-        listView.style.display = 'none';
+      } else if (target === 'flashcard-view') {
         flashcardView.style.display = 'flex';
-        sortWrapper.style.display = 'none';
         startFlashcards();
+      } else if (target === 'spelling-view') {
+        spellingView.style.display = 'flex';
+        startSpelling();
       }
     });
   });
@@ -405,23 +428,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    // Only active in flashcard view and not in batch text area
-    if (flashcardView.style.display === 'none') return;
+    // 批量添加框时不触发
     if (batchArea.style.display === 'block') return;
+
+    // Flashcard View Shortcuts
+    if (flashcardView.style.display !== 'none') {
+        switch(e.code) {
+          case 'Space':
+            e.preventDefault();
+            flashcard.click(); // Show translation
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            fcKnow.click(); // Mastered
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            fcDont.click(); // Next
+            break;
+        }
+    } 
     
-    switch(e.code) {
-      case 'Space':
-        e.preventDefault();
-        flashcard.click(); // Show translation
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        fcKnow.click(); // Mastered
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        fcDont.click(); // Next
-        break;
+    // Spelling View Shortcuts
+    if (spellingView.style.display !== 'none') {
+        if (e.code === 'Enter') {
+            e.preventDefault();
+            // 如果已经答对并处于“等待跳转”状态，回车直接跳过等待
+            if (isSpellingCorrect) {
+                 nextSpellingCard();
+            } else {
+                 checkSpelling();
+            }
+        }
     }
   });
 
@@ -538,6 +576,125 @@ document.addEventListener('DOMContentLoaded', () => {
         fcTranslation.textContent = '翻译失败';
     }
   });
+
+  // --- Spelling Mode Logic ---
+
+  function startSpelling() {
+    spellingList = Object.values(fullVocabulary).filter(item => {
+        const status = item.status || 'learning';
+        return status === 'learning';
+    }).sort((a, b) => b.count - a.count);
+
+    if (spellingList.length === 0) {
+        spMeaning.textContent = "生词本为空，请先添加单词";
+        spInput.disabled = true;
+        return;
+    }
+    
+    spInput.disabled = false;
+    currentSpellingIndex = 0;
+    showSpellingCard(0);
+  }
+
+  async function showSpellingCard(index) {
+      if (index >= spellingList.length) {
+          currentSpellingIndex = 0;
+      }
+      
+      const wordObj = spellingList[currentSpellingIndex];
+      isSpellingCorrect = false;
+
+      // Reset UI
+      spInput.value = '';
+      spInput.className = 'sp-input'; // remove correct/wrong
+      spInput.disabled = true; // disable until loaded
+      spFeedback.textContent = '';
+      spFeedback.className = 'sp-feedback';
+      spMeaning.textContent = '加载释义中...';
+
+      // Load translation
+      try {
+          const trans = await fetchTranslation(wordObj.word);
+          spMeaning.textContent = trans;
+          spInput.disabled = false;
+          spInput.focus();
+      } catch (err) {
+          spMeaning.textContent = "无法加载释义 (请检查网络)";
+      }
+  }
+
+  function checkSpelling() {
+      if (spellingList.length === 0) return;
+      const targetWord = spellingList[currentSpellingIndex].word.toLowerCase();
+      const inputVal = spInput.value.trim().toLowerCase();
+      
+      if (!inputVal) return;
+
+      if (inputVal === targetWord) {
+          // Correct
+          isSpellingCorrect = true;
+          spInput.classList.remove('wrong');
+          spInput.classList.add('correct');
+          spFeedback.textContent = "回答正确!";
+          spFeedback.className = 'sp-feedback feedback-success';
+          playAudio(targetWord);
+          
+          // Auto next after 1.5s
+          setTimeout(() => {
+              // 检查用户是否在此期间手动切走了
+              if (isSpellingCorrect) {
+                  nextSpellingCard();
+              }
+          }, 1500);
+
+      } else {
+          // Wrong
+          spInput.classList.add('wrong');
+          spFeedback.textContent = "拼写错误，请重试";
+          spFeedback.className = 'sp-feedback feedback-error';
+          
+          // Remove shake animation class after it plays so it can be re-triggered
+          setTimeout(() => {
+              spInput.classList.remove('wrong');
+          }, 500);
+      }
+  }
+
+  function nextSpellingCard() {
+      currentSpellingIndex++;
+      if (currentSpellingIndex >= spellingList.length) {
+          currentSpellingIndex = 0;
+      }
+      showSpellingCard(currentSpellingIndex);
+  }
+
+  spSubmitBtn.addEventListener('click', checkSpelling);
+  
+  spNextBtn.addEventListener('click', () => {
+      // Show the word briefly then move on? Or just move on.
+      // Let's just move on for now.
+      nextSpellingCard();
+  });
+
+  spHintBtn.addEventListener('click', () => {
+      if (spellingList.length === 0) return;
+      const targetWord = spellingList[currentSpellingIndex].word;
+      const currentInput = spInput.value;
+      
+      // Simple Hint: Fill the next character
+      if (currentInput.length < targetWord.length) {
+          const nextChar = targetWord[currentInput.length];
+          // 如果用户当前输入的前缀是对的，补全下一个；如果是错的，提示首字母
+          if (targetWord.startsWith(currentInput)) {
+              spInput.value += nextChar;
+          } else {
+              spInput.value = targetWord[0];
+          }
+          spInput.focus();
+      }
+  });
+
+  // --- Shared Utilities ---
 
   async function fetchTranslation(word) {
       // Check Cache
